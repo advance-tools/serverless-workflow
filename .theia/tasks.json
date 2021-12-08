@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "label": "connect books",
+            "type": "shell",
+            "command": "/home/project/cloud_sql_proxy -instances=advancedware:europe-west1:advancedware-store=tcp:5432 -credential_file=/home/project/advance-books/books-services/credentials.json",
+            "problemMatcher": [],
+            "reveal": "never"
+        }
+    ]
+}
