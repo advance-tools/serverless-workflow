@@ -155,7 +155,7 @@ class TaskCheckAPIView(APIView):
         * then `SubTaskStatus` of the Current Task will be Marked as **Completed**.
         * Checking if Current Task's `parent_task` is **not None**.
             * then triggering check for the parent_task.
-        * Checking if Current Task's `parent_task` in **None**.
+        * Checking if Current Task's `parent_task` is **None**.
             * **Deleting** the `Current Task` and its `Children`.
     """
     def put(self, request, *args, **kwargs):

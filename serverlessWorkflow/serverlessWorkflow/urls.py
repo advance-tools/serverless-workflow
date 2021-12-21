@@ -21,12 +21,16 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
+read_me = ""
+
+with open("serverlessWorkflow/DocsHeader.md", encoding='utf-8') as f:
+    read_me = f.read()
 
 schema_view = get_schema_view(
     openapi.Info(
         title="ServerLess Workflow API",
         default_version='v0.1',
-        description="",
+        description=read_me,
         contact=openapi.Contact(email="priyanshu@advancedware.in"),
     ),
     public=True,
