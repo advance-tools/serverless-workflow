@@ -1,9 +1,8 @@
 from rest_framework import serializers, status
 
 from task_services.models import Task, StatusChoices, ImmediateInputTypeChoices, SubTaskInputTypeChoices
-from tasks.create import create_http_task
-from task_services.models import localtunnel_url
-
+from serverlessWorkflow.task import create_http_task
+from django.conf import settings
 
 class ChoicesSerializer(serializers.Serializer):
     pass
@@ -146,12 +145,14 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
 
             instance.save()
 
-            # 8007
-            create_http_task(f"{localtunnel_url}/task/check/{instance.parent_task_id}", payload={}, method="PUT")
+            # 8001
+            
+            create_http_task(f"{settings.SERVERLESS_WORKFLOW_URL}/task/check/{instance.parent_task_id}", payload={}, method="PUT")
 
         # Checking if current task's status is Completed
+        
         elif instance.immediate_next is not None and len(instance.immediate_next) > 0 and instance.task_status == StatusChoices.COMPLETED:
-
+            
             for next_data in instance.immediate_next:
 
                 # Getting the url

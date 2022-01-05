@@ -9,10 +9,10 @@ from django.db.models.deletion import ProtectedError
 from django.db.transaction import TransactionManagementError
 from django.urls import reverse
 
-from tasks.create import create_http_task
+from serverlessWorkflow.task import create_http_task
 
 from task_services.exceptions import ServerError, ObjectNotFound, CannotDelete
-from task_services.models import localtunnel_url as host
+
 from task_services.models import Task, StatusChoices, ImmediateInputTypeChoices, SubTaskInputTypeChoices
 from task_services.serializers.task import InitTaskSerializer, CompleteTaskSerializer, ChoicesSerializer
 
@@ -80,6 +80,7 @@ class TaskInitAPIView(CreateAPIView):
 
 
 class TaskCompletedAPIView(UpdateAPIView):
+
     """
     put: Task Completed PUT\n
     An api endpoint to Mark Task Completed.

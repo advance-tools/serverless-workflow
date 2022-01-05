@@ -1,19 +1,18 @@
-from django.conf import settings
-
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
 
 import datetime
 import json
+import os
 
 
-def create_http_task(url, payload=None, method="POST", headers={"Content-Type": "application/json"}, queue=settings.BOOKS_ETL_SERVICE_QUEUE, in_seconds=None, task_name=None):
+def create_http_task(url, payload=None, method="POST", headers={"Content-Type": "application/json"}, queue='serverless-workflow-q', in_seconds=None, task_name=None):
 
     # Create a client.
-    client = tasks_v2.CloudTasksClient()
+    client  = tasks_v2.CloudTasksClient()
 
-    project = settings.PROJECT_ID
-    region = settings.REGION
+    project = 'advancedware'
+    region  = 'europe-west1'
 
     # Construct the fully qualified queue name.
     parent = client.queue_path(project, region, queue)
@@ -23,13 +22,13 @@ def create_http_task(url, payload=None, method="POST", headers={"Content-Type": 
             'http_method': method,
             'url': url,  # The full url path that the task will be sent to.
             'oidc_token': {
-                'service_account_email': settings.SERVICE_ACCOUNT_EMAIL
+                'service_account_email': 'books-356@advancedware.iam.gserviceaccount.com'
             },
             'headers': headers
         }
     }
 
-    if payload is not None and method != "GET":
+    if payload is not None:
         if isinstance(payload, dict):
             # Convert dict to JSON string
             payload = json.dumps(payload)
@@ -58,7 +57,4 @@ def create_http_task(url, payload=None, method="POST", headers={"Content-Type": 
     # Use the client to build and send the task.
     response = client.create_task(request={"parent": parent, "task": task})
 
-    print("Created task {}".format(response.name))
-
-    # print('Created task {}'.format(response.name))
     return response

@@ -84,7 +84,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'task_services.middleware.TaskInitAndCompleteMiddleware'
+    
 ]
 
 ROOT_URLCONF = 'serverlessWorkflow.urls'
@@ -164,20 +164,14 @@ DATABASES["default"]["CONN_MAX_AGE"] = 60
 # Cloud Tasks
 ###########################################
 
-SERVICE_ACCOUNT_EMAIL     = os.environ.get('SERVICE_ACCOUNT_EMAIL', env('SERVICE_ACCOUNT_EMAIL'))
-PROJECT_ID                = os.environ.get('PROJECT_ID', env('PROJECT_ID'))
-REGION                    = os.environ.get('REGION', env('REGION'))
-
-EMAIL_SERVICE_QUEUE       = os.environ.get('EMAIL_SERVICE_QUEUE', env('EMAIL_SERVICE_QUEUE'))
-BOOKS_ETL_SERVICE_QUEUE   = os.environ.get('BOOKS_ETL_SERVICE_QUEUE', env('BOOKS_ETL_SERVICE_QUEUE'))
-
+SERVERLESS_WORKFLOW_URL   = os.environ.get('SERVERLESS_WORKFLOW_URL',env('SERVERLESS_WORKFLOW_URL'))
 ###########################################
 # Storages
 ###########################################
 
-GS_BUCKET_NAME = env("GS_BUCKET_NAME")
+GS_BUCKET_NAME          = env("GS_BUCKET_NAME")
 
-DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
-STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+DEFAULT_FILE_STORAGE    = "storages.backends.gcloud.GoogleCloudStorage"
+STATICFILES_STORAGE     = "storages.backends.gcloud.GoogleCloudStorage"
 
-GS_DEFAULT_ACL = "publicRead"
+GS_DEFAULT_ACL          = "publicRead"

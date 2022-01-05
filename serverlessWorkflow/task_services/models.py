@@ -1,12 +1,8 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
-from tasks.create import create_http_task
-
 from uuid import uuid4
 
-
-localtunnel_url = "https://8010.9a1249e76586779ebe526fe618468e04.codespace.advancedware.in"
 # Create your models here.
 
 class StatusChoices(models.IntegerChoices):
