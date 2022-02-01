@@ -24,13 +24,13 @@ if not os.path.isfile('.env'):
 
     # Import the Secret Manager client library.
     from google.cloud import secretmanager
-    import google
+    from google.auth import default
 
     # Create the Secret Manager client.
     client = secretmanager.SecretManagerServiceClient()
 
     # get project_id
-    _, project_id = google.auth.default()
+    _, project_id = default()
 
     # get secret_id
     secret_id = os.environ.get('SECRET_NAME')
@@ -68,12 +68,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # apps
-    'task_services',
-
+    
     'drf_yasg',
     'rest_framework',
     'rest_framework.authtoken',
+
+    # apps
+    'task_services',
 ]
 
 MIDDLEWARE = [
@@ -121,7 +122,7 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-AUTH_USER_MODEL = 'auth.User'
+AUTH_USER_MODEL = 'task_services.User'
 
 
 FIXTURE_DIRS = ("services/fixtures/",)
@@ -147,6 +148,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'DEFAULT_FILTER_BACKENDS': ['rest_framework.filters.OrderingFilter'],
+    'DEFAULT_AUTHENTICATION_CLASSES':('rest_framework.authentication.TokenAuthentication',),
     'PAGE_SIZE': 100,
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',

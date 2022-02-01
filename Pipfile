@@ -15,9 +15,9 @@ google-cloud-secret-manager = "==2.7.1"
 django-storages = {extras = ["google"], version = "1.12.3"}
 drf-yasg = "==1.20.0"
 pillow = "*"
+querybuilder = {editable = true, git = "ssh://git@repo-4.github.com/advance-tools/django-querybuilder.git"}
 
 [dev-packages]
-pylint = "*"
 
 [requires]
 python_version = "3.8"

@@ -3,7 +3,7 @@ from google.protobuf import timestamp_pb2
 
 import datetime
 import json
-import os
+from typing import Dict, Any
 
 
 def create_http_task(url, payload=None, method="POST", headers={"Content-Type": "application/json"}, queue='serverless-workflow-q', in_seconds=None, task_name=None):
@@ -17,7 +17,7 @@ def create_http_task(url, payload=None, method="POST", headers={"Content-Type": 
     # Construct the fully qualified queue name.
     parent = client.queue_path(project, region, queue)
 
-    task = {
+    task: Dict[str, Any] = {
         'http_request': {  # Specify the type of request.
             'http_method': method,
             'url': url,  # The full url path that the task will be sent to.
@@ -27,8 +27,9 @@ def create_http_task(url, payload=None, method="POST", headers={"Content-Type": 
             'headers': headers
         }
     }
-
+    
     if payload is not None:
+        
         if isinstance(payload, dict):
             # Convert dict to JSON string
             payload = json.dumps(payload)

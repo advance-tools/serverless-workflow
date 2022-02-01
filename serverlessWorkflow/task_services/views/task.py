@@ -1,20 +1,23 @@
 from rest_framework import status
-from rest_framework.generics import CreateAPIView, UpdateAPIView, DestroyAPIView
+from rest_framework.generics import CreateAPIView, UpdateAPIView, ListAPIView, DestroyAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework.pagination import CursorPagination
+from rest_framework.exceptions import APIException , NotFound, MethodNotAllowed, ParseError
 
 from django.core.exceptions import FieldDoesNotExist, FieldError, ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import IntegrityError, transaction
+from django.db.models import Exists, OuterRef 
 from django.db.models.deletion import ProtectedError
 from django.db.transaction import TransactionManagementError
-from django.urls import reverse
 
+from querybuilder import querybuilder
 from serverlessWorkflow.task import create_http_task
-
-from task_services.exceptions import ServerError, ObjectNotFound, CannotDelete
-
-from task_services.models import Task, StatusChoices, ImmediateInputTypeChoices, SubTaskInputTypeChoices
-from task_services.serializers.task import InitTaskSerializer, CompleteTaskSerializer, ChoicesSerializer
+from task_services.exceptions import ServerError, ObjectNotFound, CannotDelete 
+from task_services.choices import StatusChoices, ImmediateInputTypeChoices, SubTaskInputTypeChoices
+from task_services.models import Task, User
+from task_services.serializers.task import InitTaskSerializer, CompleteTaskSerializer, ChoicesSerializer, ListTaskSerializer
 
 from uuid import uuid4
 
@@ -22,7 +25,7 @@ from uuid import uuid4
 class ChoicesAPIView(APIView):
     """
     get: Task Choices\n
-    This will return all the Choices need in Task.
+    This endpoint will return all the Choices need in Task.
     """
     serializer_class = ChoicesSerializer
 
@@ -37,16 +40,68 @@ class ChoicesAPIView(APIView):
         return Response(data=data, status=status.HTTP_200_OK)
 
 
+class TaskListAPIView(ListAPIView):
+    """
+    get: Task List\n
+    This endpoint will return all the task Initiated by user.
+
+    field name          | method | lookup | example
+    --------------------|--------|-------------|----------
+    id                  | filter or exclude | in | 1. ?id=`58b346e6-7b83-4ab6-8da4-d97399e15dbc`,<br> 2. ?exclude:id=`58b346e6-7b83-4ab6-8da4-d97399e15dbc`
+    parent_task         | filter or exclude | in, isnull | 1. ?parent_task='58b346e6-7b83-4ab6-8da4-d97399e15dbc'<br> 2.?parent_task.isnull=tru
+    task_status         | filter or exclude | in | 1. ?task_status=0 <br> 2. ?exclude:task_status=2
+    code                | filter or exclude | in, contains, icontains, exact, iexact, startswith, endswith | 1. ?code.startswith=`registartion--58b346e6-7b83-4ab6-8da4-d97399e15dbc`
+    created_at          | filter or exclude | lte, gte, gt, lt, range, startswith, endswith, in            | 1. ?created_at.lte=`2020-03-22`,<br> 2. ?filter:created_at.gte=`2020-03-22`, <br> 3. ?exclude:created_at.range=`2020-03-22,2020-11-26`
+    """
+    serializer_class            = ListTaskSerializer
+    permission_classes: tuple   = (AllowAny,)
+    pagination_class            = CursorPagination
+    valid_pairs                 = {
+        "id"                        : ["in"],
+        "parent_task"               : ["in","isnull"],
+        "task_status"               : ["in"],
+        "code"                      : ["icontains", "contains", "in", "exact", "iexact", "startswith", "endswith"],
+        "created_at"                : ["lte", "gte", "gt", "lt", "range", "in", "contains", "icontains"],
+    }
+    ordering: tuple             = ('-created_at',)
+
+    def get_queryset(self):
+
+        try:
+
+            queryset    = Task.objects.filter(my_user=self.kwargs.get('my_user'))
+
+            queries     = querybuilder(queryset, self.request.GET, self.valid_pairs)
+
+            if queries is False:
+
+                raise APIException(detail="Invalid QueryParams!!", code=status.HTTP_400_BAD_REQUEST)
+
+            self.only = queries.get("only")
+
+            return queries.get("queryset")
+
+        except (FieldDoesNotExist, FieldError) as exc:
+
+            raise ServerError(exc)
+
+    
 class TaskInitAPIView(CreateAPIView):
     """
     post: Task Init POST\n
     An api endpoint to Initiate Tasks.
-    """
-    serializer_class = InitTaskSerializer
 
+    | Validation | Error Code | Error Messages |
+    | Primary Key(id) should be Unique. The format of Id should be UUID and you cannot re-enter the id. | 406 | Task with given id already exists. |
+    | If the given user exists | 404 | User with given id does not exists. |
+    | User of current task and it`s parent task should be same if exists.| 400 | Parent Task of Current task is not valid |
+    """
+    serializer_class            = InitTaskSerializer
+    permission_classes:tuple    = (AllowAny,)
+    
     def get_queryset(self):
 
-        return Task.objects.all()
+        return Task.objects.filter(my_user=self.kwargs.get("my_user"))
 
     def perform_create(self, serializer):
 
@@ -56,7 +111,7 @@ class TaskInitAPIView(CreateAPIView):
 
                 with transaction.atomic():
 
-                    code = None
+                    code = serializer.validated_data.get("code")
 
                     # checking if parent_task is not None
                     if serializer.validated_data.get("parent_task"):
@@ -66,11 +121,7 @@ class TaskInitAPIView(CreateAPIView):
                     
                         # concating string
                         code = parent_codes + f",{uuid4()}"
-
-                    else:
-
-                        code = f"{uuid4()}"
-
+                    
                     # save model
                     return serializer.save(code=code)
 
@@ -93,6 +144,9 @@ class TaskCompletedAPIView(UpdateAPIView):
 
     | Validation | Error Code | Error Messages |
     |------------|------------|----------------|
+    | Task with given id exists | 404 | Task with given id does not exists. |
+    | If the given user exists | 404 | User with given id does not exists. |
+    | User of current task and it`s parent task should be same if exists.| 400 | Parent Task of Current task is not valid |
     | If ImmediateNext is None or [] then SubTaskNext should be None or [] | 400 | Sub Task Next should be None when Immediate Next is None. |
 
     patch: Task Completed PATCH\n
@@ -108,17 +162,18 @@ class TaskCompletedAPIView(UpdateAPIView):
     |------------|------------|----------------|
     | If ImmediateNext is None or [] then SubTaskNext should be None or [] | 400 | Sub Task Next should be None when Immediate Next is None. |
     """
-    serializer_class = CompleteTaskSerializer
+    serializer_class            = CompleteTaskSerializer
+    permission_classes: tuple   = (AllowAny,)
 
     def get_queryset(self):
 
-        return Task.objects.all()
+        return Task.objects.filter(my_user=self.kwargs.get("my_user"))
 
     def get_object(self):
-
+        
         try:
 
-            return self.get_queryset().get(id=self.request.data.get("id"))
+            return self.get_queryset().get(id=self.kwargs.get("id"))
 
         except ObjectDoesNotExist as exc:
 
@@ -144,158 +199,122 @@ class TaskCompletedAPIView(UpdateAPIView):
             raise ServerError(exc)
 
 
-class TaskCheckAPIView(APIView):
+class TaskRetryAPIView(DestroyAPIView):
     """
-    put: Task Check PUT\n
-    An api endpoint to Check Task's Completion.
-
-    ## Things happening in this endpoint:
-    * Checking if all the children's `task_status` and `sub_task_status` is **Completed** of the Current Task and Current Task's `sub_task_next's length` is greater than **0**.
-        * then all the Sub Task will be triggered one by one.
-    * Checking if all the children's `task_status` and `sub_task_status` is **Completed** of the Current Task and Current Task's `sub_task_next's length` is **0**.
-        * then `SubTaskStatus` of the Current Task will be Marked as **Completed**.
-        * Checking if Current Task's `parent_task` is **not None**.
-            * then triggering check for the parent_task.
-        * Checking if Current Task's `parent_task` is **None**.
-            * **Deleting** the `Current Task` and its `Children`.
+    delete:Task DELETE and RETRY 
+    This endpoint will delete the specified task if task_status is error and Retry with same payload.
+    
+    | Validation | Error Code | Error Messages |
+    | Task with given id Exists .| 404 | Task with given id does not Exists. |
+    | If the given user exists | 404 | User with given id does not exists.|
+    | Parent task is null | 400 | Task is not root node and has Parent Task. |
+    | Task status is Error | 400 | Task is Completed or Pending. Only Task having status Error can be retry. |
     """
-    def put(self, request, *args, **kwargs):
+    permission_classes: tuple   = (AllowAny,)
 
-        obj = None
+    def get_object(self):
 
-        # Getting Task
-        queryset = Task.objects.filter(id=kwargs.get("id"))
+        try:
 
-        # If queryset exists getting first instance
-        if queryset.exists():
+            return Task.objects.get(id=self.kwargs.get("id"))
+        
+        except:
+            
+            raise NotFound(f"Task with id: {self.kwargs.get('id')} does not exists.")
+    
+    def perform_destroy(self, instance):
 
-            obj = queryset.first()
+        if User.objects.filter(id=self.kwargs.get('my_user')).exists():
 
-        # If object is not None and object's sub_task_next is not None or length of sub_task_next is greater than 0 and Checking if current tasks all children's task_status and sub_task_status is Completed
-        if obj and obj.sub_task_next is not None and len(obj.sub_task_next) > 0 and not Task.objects.filter(
-            code__contains=obj.code.split(",")[-1]
-        ).exclude(
-            id=kwargs.get("id")
-        ).exclude(
-            task_status=StatusChoices.COMPLETED,
-            sub_task_status=StatusChoices.COMPLETED
-        ).exists():
+            if instance.parent_task != None:
+                    
+                raise ParseError(f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_403_FORBIDDEN)
+        else:
 
-            for sub_next_data in obj.sub_task_next:
+            raise NotFound(f"User with id: {self.kwargs.get('my_user')} does not exists.")
+        
+        # find children task of given id with task status ERRORS.
+        error_tasks = Task.objects.filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
+        
+        if error_tasks.exists():
+            
+            task = error_tasks.first()
+            
+            try:
+        
+                task.delete()
 
-                # getting url
-                url: str = sub_next_data.get("url")
+            except ProtectedError as exc:
+                
+                raise CannotDelete(exc)
+            
+            except (FieldDoesNotExist, FieldError, IntegrityError) as exc:
+                
+                raise ServerError(exc)
+            
+            create_http_task(url=task.request['url'], payload=task.request['payload'], headers=task.request['headers'], method=task.request['method'])
 
-                # getting method
-                method: str = sub_next_data.get("method")
+        else:
 
-                # getting headers
-                headers = obj.response.get("headers")
-
-                # getting payload
-                payload = {}
-
-                # getting the payload from response of current instance
-                if sub_next_data.get("input_type") == SubTaskInputTypeChoices.CURRENT_RESPONSE:
-
-                    payload = obj.response.get("data")
-
-                # getting the payload from sub_task response
-                elif sub_next_data.get("input_type") == SubTaskInputTypeChoices.SUB_TASK_RESPONSE:
-
-                    payload = obj.sub_task.all().values_list("response", flat=True)
-
-                # getting the payload from current response and sub task response
-                elif sub_next_data.get("input_type") == SubTaskInputTypeChoices.CURRENT_AND_SUB_TASK_RESPONSE:
-
-                    payload = [obj.response] + obj.sub_task.all().values_list("response", flat=True)
-
-                # getting the payload from custom_input of sub_task_data
-                elif sub_next_data.get("input_type") == SubTaskInputTypeChoices.CUSTOM_INPUT:
-
-                    payload = sub_next_data.get("custom_input")
-
-                create_http_task(url, payload, headers=headers, method=method, in_seconds=5)
-
-            obj.sub_task_next = []
-
-            with transaction.atomic():
-
-                obj.save()
-
-        # If obj is not None and obj's sub_task_next is not None and length of sub_task_next is 0 and Checking if current tasks all children's task_status and sub_task_status is Completed
-        elif obj and (
-            (
-                obj.sub_task_next is not None and len(obj.sub_task_next) == 0
-            ) or (
-                obj.sub_task_next is None
-            )
-        ) and not Task.objects.filter(
-            code__contains=obj.code.split(",")[-1]
-        ).exclude(
-            id=kwargs.get("id")
-        ).exclude(
-            task_status=StatusChoices.COMPLETED,
-            sub_task_status=StatusChoices.COMPLETED
-        ).exists():
-
-            # setting sub_task_status as Completed
-            obj.sub_task_status = StatusChoices.COMPLETED
-
-            with transaction.atomic():
-
-                obj.save()
-
-                # If Obj's parent_task is not None then calling check for parent task.
-                if obj.parent_task_id is not None:
-
-                    # getting url for check endpoint
-                    url = reverse("task-check", kwargs={"id": obj.parent_task_id})
-
-                    create_http_task(host+url, payload={}, method="PUT")
-
-                    return Response(data={"detail": "The current task's sub-tasks have been compeleted. Now we are initiating the same check for current task's parent_task."}, status=status.HTTP_200_OK)
-
-                # If obj is Root Node then we will delete the instance
-                elif obj.parent_task_id is None:
-
-                    obj.delete()
-
-            return Response(data={"detail": "This task's sub-tasks have been completed."}, status=status.HTTP_200_OK)
-
-        return Response(data={"detail": "This task's sub-tasks are still pending."}, status=status.HTTP_200_OK)
+            raise MethodNotAllowed("Task is Completed or Pending\n Only Task having status Error can be retry.")
 
 
 class TaskDeleteAPIView(DestroyAPIView):
     """
     delete: Task DELETE\n
     An API Endpoint to delete parent task that is Completed. Only Task that has no parent task and task status are Completed or Errors and sub task status are Completed or Errors can only be Deleted.
+    
+    | Validation | Error Code | Error Messages |
+    | Task with given id Exists .| 404 | Task with given id does not Exists. |
+    | If the given user exists | 404 | User with given id does not exists.|
+    | Parent task is null | 400 | Task is not root node and has Parent Task. |
+    | Task status and Sub task status is COMPLETED or ERROR | 403 | Task status is PENDING. (task_status:0 or sub_task_status:0) |
     """
+    permission_classes: tuple   = (AllowAny,)
+    
     def get_object(self):
 
         try:
+            
+            return Task.objects.get(id=self.kwargs.get("id"))
+        
+        except:
+            
+            raise NotFound(f"Task with id: {self.kwargs.get('id')} does not exists.")
+    
+    def perform_destroy(self,instance):
 
-            # Filtering Task that has no parent task and task status are Completed or Errors and sub task status are Completed or Errors 
-            return Task.objects.filter(parent_task_id=None, task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS], sub_task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS]).get(id=self.kwargs.get("id"))
+        if User.objects.filter(id=self.kwargs.get('my_user')).exists():
+                
+            if instance.parent_task != None:
+                    
+                raise ParseError(f"Task is not root task and has parent task with id: {instance.parent_task.id}.",code=status.HTTP_403_FORBIDDEN)
+                
+        else:
+                
+            raise NotFound(f"User with id: {self.kwargs.get('my_user')} does not exists.")
+        
+        if Task.objects.filter(
+            code__startswith=instance.code,
+        ).annotate(
+            has_children=Exists(Task.objects.filter(parent_task=OuterRef('id')))
+        ).filter(
+            has_children=False,
+            task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS],
+            sub_task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS]
+        ).exists():
+            
+            try:
+                
+                instance.delete()
+            
+            except ProtectedError as exc:
+                
+                raise CannotDelete(exc)
 
-        except ObjectDoesNotExist as exc:
-
-            raise ObjectNotFound(exc)
-
-        except MultipleObjectsReturned as exc:
-
-            raise ServerError(exc)
-
-    def perform_destroy(self, instance):
-
-        try:
-
-            instance.delete()
-
-        except ProtectedError as exc:
-
-            raise CannotDelete(exc)
-
-        except (FieldDoesNotExist, FieldError, IntegrityError) as exc:
-
-            raise ServerError(exc)
+            except (FieldDoesNotExist, FieldError, IntegrityError) as exc:
+                
+                raise ServerError(exc)
+        else:
+            
+            raise MethodNotAllowed("Task status or sub task status is PENDING.")
