@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.pagination import CursorPagination
-from rest_framework.exceptions import APIException , NotFound, MethodNotAllowed, ParseError
+from rest_framework.exceptions import APIException
 
 from django.core.exceptions import FieldDoesNotExist, FieldError, ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import IntegrityError, transaction
@@ -103,7 +103,7 @@ class TaskInitAPIView(CreateAPIView):
 
         return Task.objects.filter(my_user=self.kwargs.get("my_user"))
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: InitTaskSerializer):
 
         try:
 
@@ -183,7 +183,7 @@ class TaskCompletedAPIView(UpdateAPIView):
 
             raise ServerError(exc)
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: CompleteTaskSerializer):
 
         try:
 
@@ -218,20 +218,24 @@ class TaskRetryAPIView(DestroyAPIView):
 
             return Task.objects.get(id=self.kwargs.get("id"))
         
-        except:
-            
-            raise NotFound(f"Task with id: {self.kwargs.get('id')} does not exists.")
+        except ObjectDoesNotExist as exc:
+
+            raise ObjectNotFound(exc)
+
+        except MultipleObjectsReturned as exc:
+
+            raise ServerError(exc)
     
-    def perform_destroy(self, instance):
+    def perform_destroy(self, instance: Task):
 
         if User.objects.filter(id=self.kwargs.get('my_user')).exists():
 
             if instance.parent_task != None:
                     
-                raise ParseError(f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_403_FORBIDDEN)
+                raise APIException(detail=f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_400_BAD_REQUEST)
         else:
 
-            raise NotFound(f"User with id: {self.kwargs.get('my_user')} does not exists.")
+            raise APIException(detail=f"User with id: {self.kwargs.get('my_user')} does not exists.", code=status.HTTP_400_BAD_REQUEST)
         
         # find children task of given id with task status ERRORS.
         error_tasks = Task.objects.filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
@@ -256,7 +260,7 @@ class TaskRetryAPIView(DestroyAPIView):
 
         else:
 
-            raise MethodNotAllowed("Task is Completed or Pending\n Only Task having status Error can be retry.")
+            raise APIException(detail="Task has Completed or Pending status\n Only Task having status Error can be retried.", code=status.HTTP_400_BAD_REQUEST)
 
 
 class TaskDeleteAPIView(DestroyAPIView):
@@ -278,9 +282,13 @@ class TaskDeleteAPIView(DestroyAPIView):
             
             return Task.objects.get(id=self.kwargs.get("id"))
         
-        except:
-            
-            raise NotFound(f"Task with id: {self.kwargs.get('id')} does not exists.")
+        except ObjectDoesNotExist as exc:
+
+            raise ObjectNotFound(exc)
+
+        except MultipleObjectsReturned as exc:
+
+            raise ServerError(exc)
     
     def perform_destroy(self,instance):
 
@@ -288,11 +296,11 @@ class TaskDeleteAPIView(DestroyAPIView):
                 
             if instance.parent_task != None:
                     
-                raise ParseError(f"Task is not root task and has parent task with id: {instance.parent_task.id}.",code=status.HTTP_403_FORBIDDEN)
+                raise APIException(detail=f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_400_BAD_REQUEST)
                 
         else:
                 
-            raise NotFound(f"User with id: {self.kwargs.get('my_user')} does not exists.")
+            raise APIException(detail=f"User with id: {self.kwargs.get('my_user')} does not exists.", code=status.HTTP_400_BAD_REQUEST)
         
         if Task.objects.filter(
             code__startswith=instance.code,
@@ -317,4 +325,5 @@ class TaskDeleteAPIView(DestroyAPIView):
                 raise ServerError(exc)
         else:
             
-            raise MethodNotAllowed("Task status or sub task status is PENDING.")
+            raise APIException(detail="Task status or sub task status is PENDING.", code=status.HTTP_400_BAD_REQUEST)
+        

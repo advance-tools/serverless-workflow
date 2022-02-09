@@ -1,10 +1,6 @@
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, CreateAPIView, DestroyAPIView
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import CursorPagination
-from rest_framework.views import APIView
-from rest_framework import status
-from rest_framework.response import Response
 from django.core.exceptions import  FieldError
 from django.db import IntegrityError, transaction
 from django.db.transaction import TransactionManagementError
@@ -37,7 +33,7 @@ class UserListCreateAPIView(ListCreateAPIView):
 
         return {'view': self}
 
-    def perform_create(self,serializer):
+    def perform_create(self, serializer):
 
         try:
 

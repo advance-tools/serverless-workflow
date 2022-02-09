@@ -90,8 +90,8 @@ class Task(models.Model):
     immediate_next: Optional[List[Dict[str, Any]]] = ArrayField(models.JSONField(null=True), null=True)
     sub_task_next: Optional[List[Dict[str, Any]]]  = ArrayField(models.JSONField(null=True), null=True)
 
-    buffer_immediate_next   = ArrayField(models.JSONField(null=True), null=True)
-    buffer_sub_task_next    = ArrayField(models.JSONField(null=True), null=True)
+    # buffer_immediate_next   = ArrayField(models.JSONField(null=True), null=True)
+    # buffer_sub_task_next    = ArrayField(models.JSONField(null=True), null=True)
 
     created_at: datetime    = models.DateTimeField(auto_now_add=True)
     updated_at: datetime    = models.DateTimeField(auto_now=True)

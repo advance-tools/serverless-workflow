@@ -1,12 +1,12 @@
 from google.cloud import tasks_v2
+from google.cloud.tasks_v2.types import Task
 from google.protobuf import timestamp_pb2
-
 import datetime
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional, cast, Union
 
 
-def create_http_task(url, payload=None, method="POST", headers={"Content-Type": "application/json"}, queue='serverless-workflow-q', in_seconds=None, task_name=None):
+def create_http_task(url: str, payload: Union[Optional[Dict[str, Any]], str] = None, method: str ="POST", headers: Dict[str, Any]={"Content-Type": "application/json"}, queue: str = 'serverless-workflow-q', in_seconds: Optional[int] = None, task_name: Optional[str] = None) -> Task:
 
     # Create a client.
     client  = tasks_v2.CloudTasksClient()
@@ -32,7 +32,7 @@ def create_http_task(url, payload=None, method="POST", headers={"Content-Type": 
         
         if isinstance(payload, dict):
             # Convert dict to JSON string
-            payload = json.dumps(payload)
+            payload = cast(str, json.dumps(payload))
 
         # The API expects a payload of type bytes.
         converted_payload = payload.encode()

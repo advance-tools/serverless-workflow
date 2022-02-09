@@ -1,10 +1,14 @@
 from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable, NotFound
-from rest_framework.validators import UniqueTogetherValidator
+
+from django.conf import settings
+
 from task_services.models import Task, User
 from task_services.choices import StatusChoices, ImmediateInputTypeChoices, SubTaskInputTypeChoices
+
 from serverlessWorkflow.task import create_http_task
-from django.conf import settings
+
+from typing import Dict, Any
+from collections import OrderedDict
 
 
 class ChoicesSerializer(serializers.Serializer):
@@ -54,9 +58,6 @@ class ListTaskSerializer(serializers.ModelSerializer):
     immediate_next                  = ImmediateNextSerializer(many=True, required=False, allow_null=True, help_text="Immediate Next List. All the Immediate Next endpoints will be called one by one once the task_status is Completed.")
     sub_task_next                   = SubTaskSerializer(many=True, required=False, allow_null=True, help_text="Sub Task Next List. All the Sub Task Next endpoints will be called one by one once all children's task_status and sub_task_status is Completed.")
 
-    buffer_immediate_next           = serializers.ListField(serializers.JSONField(allow_null=True), allow_null=True)
-    buffer_sub_task_next            = serializers.ListField(serializers.JSONField(allow_null=True), allow_null=True)
-    
     created_at                      = serializers.DateTimeField(read_only=True)
     updated_at                      = serializers.DateTimeField(read_only=True)
 
@@ -73,8 +74,6 @@ class ListTaskSerializer(serializers.ModelSerializer):
             "response",
             "immediate_next",
             "sub_task_next",
-            "buffer_immediate_next",
-            "buffer_sub_task_next",
 
             "created_at",
             "updated_at"
@@ -108,30 +107,30 @@ class InitTaskSerializer(serializers.ModelSerializer):
             "code",
         ]
     
-    def validate_request(self, value):
+    def validate_request(self, value: Dict[str, Any]) -> dict:
         
         return dict(value)
 
-    def validate_id(self, value):
+    def validate_id(self, value: str) -> str:
                 
         # Checking if Task with the given id already exists.
         if Task.objects.filter(id=value).exists():
             
             # raise error
-            raise NotAcceptable(detail=f"Task with id: {value} already exists.")
+            raise serializers.ValidationError(detail=f"Task with id: {value} already exists.")
 
         return value
     
-    def validate_my_user(self,value):
+    def validate_my_user(self, value: User) -> User:
         
         # Checking if the given user exists.
         if User.objects.filter(id=value.id).exists():
             
             return value
         
-        raise NotFound(detail=f"User with id: {value.id} does not exists.")
+        raise serializers.ValidationError(detail=f"User with id: {value.id} does not exists.")
     
-    def validate(self,data):
+    def validate(self, data: OrderedDict) -> OrderedDict:
         
         # Check for user of current task and parent task is same if exists.
         if Task.objects.filter(id=data['parent_task']).exists():
@@ -171,23 +170,23 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
             "code"
         ]
 
-    def validate_id(self,value):
+    def validate_id(self, value: str) -> str:
     
         if Task.objects.filter(id=value).exists():
 
             return value
         
-        raise NotFound(f"Task with id: {value} does not exists.")
+        raise serializers.ValidationError(detail=f"Task with id: {value} does not exists.")
 
-    def validate_my_user(self,value):
+    def validate_my_user(self, value: User) -> User:
 
         if User.objects.filter(id=value.id).exists():
 
             return value
 
-        raise NotFound(f"User with id: {value.id} does not exists.")
+        raise serializers.ValidationError(detail=f"User with id: {value.id} does not exists.")
 
-    def validate(self, data):
+    def validate(self, data: OrderedDict) -> OrderedDict:
         
         if Task.objects.filter(id=data['parent_task']).exists():
         
@@ -198,17 +197,17 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Parent Task of Current task is not valid")
 
         # If ImmediateNext is None or []
-        if data.get("immediate_next") is None or len(data.get("immediate_next")) == 0:
+        if data.get("immediate_next") is None or len(data["immediate_next"]) == 0:
 
             # then SubTaskNext should be None or [] as well.
-            if data.get("sub_task_next") is not None and len(data.get("sub_task_next")) != 0:
+            if data.get("sub_task_next") is not None and len(data["sub_task_next"]) != 0:
 
                 # raise error
                 raise serializers.ValidationError(detail="Sub Task Next should be None when Immediate Next is None.")
 
         return data
 
-    def update(self, instance, validated_data):
+    def update(self, instance: Task, validated_data: OrderedDict) -> Task:
         
         # If response's status_code greater than 299
         if validated_data.get("response").get("status_code") > 299:
@@ -225,8 +224,6 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
         instance.response               = validated_data.get("response", instance.response)
         instance.immediate_next         = validated_data.get("immediate_next", instance.immediate_next)
         instance.sub_task_next          = validated_data.get("sub_task_next", instance.sub_task_next)
-        instance.buffer_immediate_next  = instance.immediate_next
-        instance.buffer_sub_task_next   = instance.sub_task_next
         
         # to save task_status before calling create_hhtp_task.
         instance.save()
@@ -240,19 +237,29 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
 
             # 8001
             create_http_task(f"{settings.SERVERLESS_WORKFLOW_URL}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}", payload={}, method="PUT")
+        
+        elif (instance.immediate_next is None or len(instance.immediate_next) == 0) and instance.parent_task_id is None:
+
+            instance.sub_task_status = StatusChoices.COMPLETED
+
+            instance.save()
+
+            # 8001
+            create_http_task(f"{settings.SERVERLESS_WORKFLOW_URL}/api/tasks/check/{instance.my_user_id}/{instance.id}", payload={}, method="PUT")
 
         # Checking if current task's status is Completed
         elif instance.immediate_next is not None and len(instance.immediate_next) > 0 and instance.task_status == StatusChoices.COMPLETED:
+
             for next_data in instance.immediate_next:
 
                 # Getting the url
-                url: str = next_data.get("url")
+                url: str = next_data["url"]
 
                 # Getting the method
-                method: str = next_data.get("method")
+                method: str = next_data["method"]
 
                 # Getting the headers
-                headers = instance.response.get("headers")
+                headers: Dict[str, Any] = instance.response["headers"]
 
                 # Insert Authorization key of user into Target-Authorization key
                 if 'Authorization' in headers:

@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
             "created_at",
         ]
     
-    def validate_email(self, value: str):
+    def validate_email(self, value: str) -> str:
 
         if User.objects.filter(email=value).exists():
 
@@ -64,7 +64,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "name",
         ]
     
-    def validate_id(self, value: UUID):
+    def validate_id(self, value: UUID) -> UUID:
 
         if self.instance:
 
@@ -74,7 +74,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
         return value
 
-    def validate_email(self, value: str):
+    def validate_email(self, value: str) -> str:
 
         request: Request = self.context.get("view").request
 
@@ -86,7 +86,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
         return value.lower()
     
-    def update(self, instance: User, validated_data: OrderedDict):
+    def update(self, instance: User, validated_data: OrderedDict) -> User:
 
         instance.name   = validated_data['name']
         instance.email  = validated_data['email']
@@ -114,11 +114,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'token',
         ]
 
-    def get_token(self, instance: User):
+    def get_token(self, instance: User) -> str:
 
         return instance.auth_token.key
     
-    def validate(self, data: OrderedDict):
+    def validate(self, data: OrderedDict) -> OrderedDict:
 
         request: Request = self.context.get('view').request
 
@@ -134,7 +134,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
         return data
 
-    def create(self, validated_data: OrderedDict):
+    def create(self, validated_data: OrderedDict) -> User:
 
         if hasattr(self.user, 'auth_token'):
 

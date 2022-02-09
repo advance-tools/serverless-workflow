@@ -136,17 +136,13 @@ ADMINS = (
     ('Priyanshu Bhatnagar', 'priyanshu@advancedware.in'),
 )
 
-MANAGERS = (
-    ('Rohan Baddi', 'rohan@advancedware.in'),
-)
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+MANAGERS = []
 
 #################################################################################
 # Rest Framework
 #################################################################################
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'DEFAULT_PAGINATION_CLASS': 'task_services.pagination.KeysetPagination',
     'DEFAULT_FILTER_BACKENDS': ['rest_framework.filters.OrderingFilter'],
     'DEFAULT_AUTHENTICATION_CLASSES':('rest_framework.authentication.TokenAuthentication',),
     'PAGE_SIZE': 100,
@@ -166,7 +162,7 @@ DATABASES["default"]["CONN_MAX_AGE"] = 60
 # Cloud Tasks
 ###########################################
 
-SERVERLESS_WORKFLOW_URL   = os.environ.get('SERVERLESS_WORKFLOW_URL',env('SERVERLESS_WORKFLOW_URL'))
+SERVERLESS_WORKFLOW_URL   = os.environ.get('SERVERLESS_WORKFLOW_URL', env('SERVERLESS_WORKFLOW_URL'))
 ###########################################
 # Storages
 ###########################################

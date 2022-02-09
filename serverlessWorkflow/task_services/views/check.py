@@ -65,7 +65,7 @@ class TaskCheckAPIView(APIView):
                 method: str = sub_next_data["method"]
 
                 # getting headers
-                headers = obj.response.get("headers")
+                headers = obj.response["headers"]
 
                 # getting payload
                 payload = {}
