@@ -68,7 +68,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    
     'drf_yasg',
     'rest_framework',
     'rest_framework.authtoken',
@@ -85,7 +84,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
 ]
 
 ROOT_URLCONF = 'serverlessWorkflow.urls'
@@ -136,7 +134,9 @@ ADMINS = (
     ('Priyanshu Bhatnagar', 'priyanshu@advancedware.in'),
 )
 
-MANAGERS = []
+MANAGERS = (
+    ('Priyanshu Bhatnagar', 'priyanshu@advancedware.in'),
+)
 
 #################################################################################
 # Rest Framework
@@ -156,13 +156,13 @@ DATABASES = {
     'default': env.db()
 }
 
-DATABASES["default"]["CONN_MAX_AGE"] = 60
+# DATABASES["default"]["CONN_MAX_AGE"] = 60
 
 ###########################################
 # Cloud Tasks
 ###########################################
 
-SERVERLESS_WORKFLOW_URL   = os.environ.get('SERVERLESS_WORKFLOW_URL', env('SERVERLESS_WORKFLOW_URL'))
+CURRENT_HOST   = os.environ.get('CURRENT_HOST', env('CURRENT_HOST'))
 ###########################################
 # Storages
 ###########################################

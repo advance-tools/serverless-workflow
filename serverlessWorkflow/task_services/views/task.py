@@ -106,7 +106,6 @@ class TaskInitAPIView(CreateAPIView):
     def perform_create(self, serializer: InitTaskSerializer):
 
         try:
-
             if serializer.is_valid(raise_exception=True):
 
                 with transaction.atomic():

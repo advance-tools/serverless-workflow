@@ -76,7 +76,7 @@ class User(AbstractBaseUser):
 
 class Task(models.Model):
 
-    id: str                             = models.CharField(max_length=250, primary_key=True)
+    id: UUID                            = models.UUIDField(primary_key=True, editable=False, default=uuid4)
     parent_task                         = models.ForeignKey("self", null=True, on_delete=models.CASCADE, related_name="sub_task") # type: Task
     my_user: User                       = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tasks")
     task_status: int                    = models.IntegerField(choices=StatusChoices.choices, default=StatusChoices.PENDING)

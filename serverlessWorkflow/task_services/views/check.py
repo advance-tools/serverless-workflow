@@ -55,7 +55,7 @@ class TaskCheckAPIView(APIView):
             task_status=StatusChoices.COMPLETED,
             sub_task_status=StatusChoices.COMPLETED
         ).exists():
-
+            
             for sub_next_data in obj.sub_task_next:
                 
                 # getting url
@@ -93,7 +93,6 @@ class TaskCheckAPIView(APIView):
                 elif sub_next_data["input_type"] == SubTaskInputTypeChoices.CUSTOM_INPUT:
 
                     payload = sub_next_data["custom_input"]
-
                 create_http_task(url, payload, headers=headers, method=method, in_seconds=5)
 
             obj.sub_task_next = []
@@ -116,16 +115,16 @@ class TaskCheckAPIView(APIView):
             
             # setting sub_task_status as Completed
             obj.sub_task_status = StatusChoices.COMPLETED
-
+            
             obj.save()
 
             # If Obj's parent_task is not None then calling check for parent task.
             if obj.parent_task_id is not None:
-
+                
                 # getting url for check endpoint
                 url = reverse("task-check", kwargs={"my_user":obj.my_user_id,"id": obj.parent_task_id})
                 
-                create_http_task(settings.SERVERLESS_WORKFLOW_URL + url, payload={}, method="PUT")
+                create_http_task(settings.CURRENT_HOST + url, payload={}, method="PUT")
                 
                 return Response(data={"detail": "The current task's sub-tasks have been completed. Now we are initiating the same check for current task's parent_task."}, status=status.HTTP_200_OK)
             

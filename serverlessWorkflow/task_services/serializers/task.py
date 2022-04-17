@@ -118,7 +118,7 @@ class InitTaskSerializer(serializers.ModelSerializer):
             
             # raise error
             raise serializers.ValidationError(detail=f"Task with id: {value} already exists.")
-
+        
         return value
     
     def validate_my_user(self, value: User) -> User:
@@ -127,19 +127,22 @@ class InitTaskSerializer(serializers.ModelSerializer):
         if User.objects.filter(id=value.id).exists():
             
             return value
-        
+    
         raise serializers.ValidationError(detail=f"User with id: {value.id} does not exists.")
     
     def validate(self, data: OrderedDict) -> OrderedDict:
         
-        # Check for user of current task and parent task is same if exists.
-        if Task.objects.filter(id=data['parent_task']).exists():
-            
-            parent_task_user = Task.objects.get(id=data['parent_task']).my_user
+        if data['parent_task']:
 
-            if data['my_user'] != parent_task_user:
+            # Check for user of current task and parent task is same if exists.
+            if Task.objects.filter(id=data['parent_task'].id).exists():
+                
+                parent_task_user = Task.objects.get(id=data['parent_task'].id).my_user
 
-                raise serializers.ValidationError("Parent Task of Current task is not valid")
+                
+                if data['my_user'] != parent_task_user:
+
+                    raise serializers.ValidationError("Parent Task of Current task is not valid")
         
         return data
     
@@ -188,13 +191,15 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
 
     def validate(self, data: OrderedDict) -> OrderedDict:
         
-        if Task.objects.filter(id=data['parent_task']).exists():
-        
-            parent_task_user = Task.objects.get(id=data['parent_task']).my_user
+        if data['parent_task']:
 
-            if data['my_user'] != parent_task_user:
+            if Task.objects.filter(id=data['parent_task'].id).exists():
+            
+                parent_task_user = Task.objects.get(id=data['parent_task'].id).my_user
 
-                raise serializers.ValidationError("Parent Task of Current task is not valid")
+                if data['my_user'] != parent_task_user:
+
+                    raise serializers.ValidationError("Parent Task of Current task is not valid")
 
         # If ImmediateNext is None or []
         if data.get("immediate_next") is None or len(data["immediate_next"]) == 0:
@@ -236,7 +241,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
             instance.save()
 
             # 8001
-            create_http_task(f"{settings.SERVERLESS_WORKFLOW_URL}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}", payload={}, method="PUT")
+            create_http_task(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}", payload={}, method="PUT")
         
         elif (instance.immediate_next is None or len(instance.immediate_next) == 0) and instance.parent_task_id is None:
 
@@ -245,7 +250,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
             instance.save()
 
             # 8001
-            create_http_task(f"{settings.SERVERLESS_WORKFLOW_URL}/api/tasks/check/{instance.my_user_id}/{instance.id}", payload={}, method="PUT")
+            create_http_task(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.id}", payload={}, method="PUT")
 
         # Checking if current task's status is Completed
         elif instance.immediate_next is not None and len(instance.immediate_next) > 0 and instance.task_status == StatusChoices.COMPLETED:
