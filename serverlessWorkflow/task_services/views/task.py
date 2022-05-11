@@ -100,7 +100,7 @@ class TaskInitAPIView(CreateAPIView):
     permission_classes:tuple    = (AllowAny,)
     
     def get_queryset(self):
-
+        
         return Task.objects.filter(my_user=self.kwargs.get("my_user"))
 
     def perform_create(self, serializer: InitTaskSerializer):

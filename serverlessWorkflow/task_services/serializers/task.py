@@ -22,6 +22,12 @@ class RequestSerializer(serializers.Serializer):
     payload                         = serializers.JSONField(allow_null=True,help_text="Payload of the Request.")
     headers                         = serializers.JSONField(help_text="Header of the Request.")
 
+    def validate_url(self, value):
+
+        if value.startswith("http://"):
+            value = value.replace("http://","https://")
+
+        return value
 
 class ImmediateNextSerializer(serializers.Serializer):
     url                             = serializers.CharField(max_length=10000, help_text="URL of Immediate Next Task.")
@@ -30,6 +36,12 @@ class ImmediateNextSerializer(serializers.Serializer):
     input_type                      = serializers.ChoiceField(choices=ImmediateInputTypeChoices.choices, help_text="Input Type of the Immediate Next Task.")
     custom_input                    = serializers.JSONField(allow_null=True, help_text="Custom Input of the Immediate Next Task.")
 
+    def validate_url(self, value):
+
+        if value.startswith("http://"):
+            value = value.replace("http://","https://")
+
+        return value
 
 class SubTaskSerializer(serializers.Serializer):
     url                             = serializers.CharField(max_length=10000, help_text="Url of Sub Task.")
@@ -38,7 +50,13 @@ class SubTaskSerializer(serializers.Serializer):
     input_type                      = serializers.ChoiceField(choices=SubTaskInputTypeChoices.choices, help_text="Input Type of the Sub Task.")
     custom_input                    = serializers.JSONField(allow_null=True, help_text="Custom Input of the Sub Task.")
 
+    def validate_url(self, value):
 
+        if value.startswith("http://"):
+            value = value.replace("http://","https://")
+
+        return value
+        
 class ResponseSerializer(serializers.Serializer):
     status_code                     = serializers.IntegerField(help_text="Status Code of the Response.")
     headers                         = serializers.JSONField(help_text="Headers of the Response.")
@@ -241,6 +259,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
             instance.save()
 
             # 8001
+            # print(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}")
             create_http_task(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}", payload={}, method="PUT")
         
         elif (instance.immediate_next is None or len(instance.immediate_next) == 0) and instance.parent_task_id is None:
