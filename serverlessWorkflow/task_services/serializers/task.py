@@ -234,7 +234,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
         
         # If response's status_code greater than 299
         if validated_data.get("response").get("status_code") > 299:
-
+            
             # then task_status will be set as Errors
             instance.task_status    = StatusChoices.ERRORS
 
