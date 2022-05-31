@@ -100,7 +100,7 @@ class TaskInitAPIView(CreateAPIView):
     permission_classes:tuple    = (AllowAny,)
     
     def get_queryset(self):
-
+        
         return Task.objects.filter(my_user=self.kwargs.get("my_user"))
 
     def perform_create(self, serializer: InitTaskSerializer):
@@ -301,28 +301,40 @@ class TaskDeleteAPIView(DestroyAPIView):
                 
             raise APIException(detail=f"User with id: {self.kwargs.get('my_user')} does not exists.", code=status.HTTP_400_BAD_REQUEST)
         
-        if Task.objects.filter(
-            code__startswith=instance.code,
-        ).annotate(
-            has_children=Exists(Task.objects.filter(parent_task=OuterRef('id')))
-        ).filter(
-            has_children=False,
-            task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS],
-            sub_task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS]
-        ).exists():
-            
-            try:
-                
-                instance.delete()
-            
-            except ProtectedError as exc:
-                
-                raise CannotDelete(exc)
+        # if Task.objects.filter(
+        #     code__startswith=instance.code,
+        # ).alias(
+        #     has_children=Exists(Task.objects.filter(parent_task=OuterRef('id')))
+        # ).filter(
+        #     has_children=False,
+        #     task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS],
+        #     sub_task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS]
+        # ).exists():
 
-            except (FieldDoesNotExist, FieldError, IntegrityError) as exc:
-                
-                raise ServerError(exc)
-        else:
+
+        # if Task.objects.filter(
+        #     code__startswith=instance.code,
+        # ).alias(
+        #     has_children=Exists(Task.objects.filter(parent_task=OuterRef('id')))
+        # ).filter(
+        #     has_children=False,
+        # ).filter(
+        #     Q(task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS]) |
+        #     Q(sub_task_status__in=[StatusChoices.COMPLETED, StatusChoices.ERRORS])
+        # ).exists():
             
-            raise APIException(detail="Task status or sub task status is PENDING.", code=status.HTTP_400_BAD_REQUEST)
+        try:
+            
+            instance.delete()
+        
+        except ProtectedError as exc:
+            
+            raise CannotDelete(exc)
+
+        except (FieldDoesNotExist, FieldError, IntegrityError) as exc:
+            
+            raise ServerError(exc)
+        # else:
+            
+        #     raise APIException(detail="Task status or sub task status is PENDING.", code=status.HTTP_400_BAD_REQUEST)
         

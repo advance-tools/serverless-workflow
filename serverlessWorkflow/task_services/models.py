@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.contrib.postgres.fields import ArrayField
+from django.db.models.functions import MD5
 from task_services.choices import StatusChoices
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -101,8 +102,9 @@ class Task(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields  = ['my_user','code'],
-                name    = "Unique_User-Code"
+                'my_user',
+                MD5('code'),
+                name = "Unique_User-Code"
             )
         ]
 
