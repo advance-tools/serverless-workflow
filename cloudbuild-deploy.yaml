@@ -1,0 +1,130 @@
+---
+steps:
+  #####################
+  # Build Deps
+  ######################
+  -
+    name: python:3.8.0
+    entrypoint: /bin/sh
+    args:
+      - '-c'
+      - |-
+        git config --global credential.helper 'store --file /workspace/git-credentials' &&
+        echo "https://${_GIT_USERNAME}:${_GIT_AUTH_TOKEN}@github.com" > /workspace/git-credentials &&
+
+        python3 -m pip install --upgrade pip &&
+        python3 -m pip install pipenv &&
+
+        cd / && \
+        git clone https://github.com/advance-tools/django-querybuilder.git && \
+
+        cd /workspace && \
+        pipenv uninstall querybuilder && \
+        pipenv install --ignore-pipfile --deploy && \
+        pipenv install -e /django-querybuilder && \
+
+        pipenv lock -r > /workspace/requirements.txt && \
+        mkdir /workspace/django-querybuilder && \
+        cp -r /django-querybuilder/* /workspace/django-querybuilder/
+
+  ##############################
+  #  Build Image
+  ##############################
+  -
+    name: gcr.io/k8s-skaffold/skaffold
+    args:
+      - skaffold
+      - build
+      - "-f"
+      - skaffold.yaml
+    env:
+      - BUILD_ID=$BUILD_ID
+
+  -
+    id: Update Tags
+    name: google/cloud-sdk
+    entrypoint: /bin/bash
+    args:
+      - '-c'
+      - |
+        gcloud beta container images add-tag eu.gcr.io/$PROJECT_ID/serverless-workflow:$BUILD_ID eu.gcr.io/$PROJECT_ID/serverless-workflow:latest --quiet
+
+  ##############################
+  #  Migrations / Fallback
+  ##############################
+  -
+    name: gcr.io/google-appengine/exec-wrapper
+    entrypoint: '/bin/bash'
+    args:
+      - '-c'
+      - |-
+        /buildstep/execute.sh \
+        -i eu.gcr.io/$PROJECT_ID/serverless-workflow:latest \
+        -n 'cloudbuild --volume /workspace:/workspace' \
+        -s $PROJECT_ID:${_DATA_REGION}:advancedware-store \
+        -e SECRET_NAME=${_SECRET_NAME} \
+        -- /bin/bash -c \
+        '(\
+          echo $(python manage.py showmigrations --list services | grep "\[X\]" | tail -1 | cut -d " " -f 3) > /workspace/last_migration.txt && \
+          python manage.py showmigrations && \
+          python manage.py migrate && \
+          python manage.py collectstatic --no-input && \
+          echo "migration=PASS" > /workspace/migration.txt \
+        ) \
+        || \
+        ( \
+          echo "REVERSING MIGRATION" && \
+          python manage.py migrate services $(cat /workspace/last_migration.txt) && \
+          echo "migration=FAIL" > /workspace/migration.txt && \
+          exit 0 \
+        )'
+
+  #############################
+  # Deployment / Cleanup
+  #############################
+  -
+    name: google/cloud-sdk
+    entrypoint: /bin/bash
+    args:
+      - '-c'
+      - |-
+        if [ $(cat migration.txt | awk -F '=' '{print $2}') = 'PASS' ] ; then
+
+          gcloud container images add-tag eu.gcr.io/$PROJECT_ID/serverless-workflow:latest eu.gcr.io/$PROJECT_ID/serverless-workflow:${_TAG} eu.gcr.io/$PROJECT_ID/serverless-workflow:$(cat version) --quiet &&
+          gcloud beta run deploy ${_SERVICE} --image eu.gcr.io/$PROJECT_ID/serverless-workflow:$(cat version) --platform managed --region ${_SERVICE_REGION} --no-traffic --tag blue ;
+
+        else
+
+          gcloud container images delete eu.gcr.io/$PROJECT_ID/serverless-workflow:latest --force-delete-tags --quiet &&
+          gcloud container images add-tag eu.gcr.io/$PROJECT_ID/serverless-workflow:${_TAG} eu.gcr.io/$PROJECT_ID/serverless-workflow:latest --quiet &&
+          exit -1 ;
+
+        fi
+  #############################
+  # Test Deployment
+  #############################
+  # -
+  #   name: eu.gcr.io/advancedware/books-api-test:latest
+  #   entrypoint: /bin/sh
+  #   args:
+  #     - '-c'
+  #     - |-
+  #       echo 'HOST_URL=https://blue---${_SERVICE}-76ejuaahcq-ew.a.run.app' > .env &&
+  #       npm run test
+  #   dir: /
+  #############################
+  # Load Test Deployment
+  #############################
+  #############################
+  # Migrate Traffic
+  #############################
+  -
+    name: google/cloud-sdk
+    entrypoint: /bin/bash
+    args:
+      - '-c'
+      - |-
+        gcloud beta run services update-traffic ${_SERVICE} --to-tags blue=100 --platform managed --region ${_SERVICE_REGION}
+
+
+timeout: 50000s

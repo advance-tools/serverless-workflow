@@ -1,0 +1,14 @@
+apiVersion: skaffold/v1beta8
+kind: Config
+
+build:
+
+  tagPolicy:
+    envTemplate:
+      template: "{{.BUILD_ID}}"
+
+  artifacts:
+  - image: eu.gcr.io/advancedware/serverless-workflow
+    context: .
+    docker:
+      dockerfile: ./Dockerfile

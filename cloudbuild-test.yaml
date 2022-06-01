@@ -1,0 +1,82 @@
+---
+  steps:
+    ##############################
+    # Set Last Migration
+    #############################
+    # -
+    #   name: gcr.io/google-appengine/exec-wrapper
+    #   entrypoint: '/bin/bash'
+    #   args:
+    #     - '-c'
+    #     - |-
+    #       /buildstep/execute.sh \
+    #       -i eu.gcr.io/$PROJECT_ID/serverless-workflow:latest \
+    #       -n 'cloudbuild --volume /workspace:/workspace' \
+    #       -s $PROJECT_ID:${_DATA_REGION}:advancedware-store \
+    #       -e SECRET_NAME=${_SECRET_NAME} \
+    #       -- /bin/bash -c 'python manage.py showmigrations services && \
+    #       echo $(python manage.py showmigrations --list services | grep "\[X\]" | tail -1 | cut -d " " -f 3) > /workspace/serverlessWorkflow/last_migration.txt'
+
+    #####################
+    # Test
+    #####################
+    - name: ubuntu:focal
+      dir: /workspace/serverlessWorkflow
+      env:
+        - DEBIAN_FRONTEND=noninteractive
+        - LC_ALL=C.UTF-8
+        - LANG=C.UTF-8
+      args:
+        - '-c'
+        - |-
+          apt-get update && \
+          apt-get -y install sudo postgresql libpq-dev postgresql-client postgresql-client-common python3-dev python3-pip git-all && \
+          python3 -m pip install --upgrade pip && \
+          python3 -m pip install pipenv && \
+          apt-get autoremove --purge && \
+          apt-get clean && \
+
+          service postgresql start &&
+
+          sudo -u postgres psql --command="create database serverless_workflow_local;" &&
+          sudo -u postgres psql --command="ALTER USER postgres PASSWORD 'advancedware'" &&
+
+          git config --global credential.helper 'store --file /workspace/git-credentials' &&
+          echo "https://${_GIT_USERNAME}:${_GIT_AUTH_TOKEN}@github.com" > /workspace/git-credentials &&
+
+          echo "DEBUG=on
+          SECRET_KEY=1+++0sjf9+yqe%luimorm4i7+a)w0884h9@h@oms)i7d@pdypo
+          DATABASE_URL=postgres://postgres:advancedware@localhost:5432/serverless_workflow_local
+          EMAIL_URL=consolemail://developers@advancedware.in@:bot@advancedware@smtp.gmail.com:587" > .env &&
+
+          cd / && \
+          git clone https://github.com/advance-tools/django-querybuilder.git && \
+
+          cd /workspace && \
+          pipenv uninstall querybuilder && \
+          pipenv install --ignore-pipfile --dev && \
+          pipenv install -e /django-querybuilder && \
+
+          mkdir /workspace/django-querybuilder && \
+          cp -r /django-querybuilder/* /workspace/django-querybuilder/ && \
+
+          cd /workspace/serverlessWorkflow &&
+          pipenv run python manage.py check &&
+          pipenv run python manage.py migrate &&
+          echo "Test REVERSE MIGRATION" &&
+          pipenv run python manage.py migrate services $(cat last_migration.txt) &&
+          echo "Re Migrate" &&
+          pipenv run python manage.py migrate
+
+  timeout: 18000s
+
+# pipenv run python manage.py test --debug-mode -v 3 --no-input &&
+  # &&
+  #         ( \
+  #           pipenv run python manage.py runserver &
+  #           ( \
+  #             git clone https://${_GIT_USERNAME}:${_GIT_AUTH_TOKEN}@github.com/impriyanshub/books-api-test.git && \
+  #             cd books-api-test && mkdir cache && echo "HOST_URL=http://localhost:8000" > .env && \
+  #             npm install && npm run test \
+  #           ) \
+  #         )
