@@ -20,7 +20,7 @@
     #####################
     # Test
     #####################
-    - name: ubuntu:focal
+    - name: ubuntu:bionic
       dir: /workspace/serverlessWorkflow
       env:
         - DEBIAN_FRONTEND=noninteractive
