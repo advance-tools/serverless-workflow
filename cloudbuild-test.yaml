@@ -20,7 +20,7 @@
     #####################
     # Test
     #####################
-    - name: ubuntu:bionic
+    - name: gcr.io/cloud-builders/git
       dir: /workspace/serverlessWorkflow
       env:
         - DEBIAN_FRONTEND=noninteractive
@@ -30,7 +30,7 @@
         - '-c'
         - |-
           apt-get update && \
-          apt-get -y install sudo postgresql libpq-dev postgresql-client postgresql-client-common python3-dev python3-pip git-all && \
+          apt-get -y install sudo postgresql libpq-dev postgresql-client postgresql-client-common python3-dev python3-pip && \
           python3 -m pip install --upgrade pip && \
           python3 -m pip install pipenv && \
           apt-get autoremove --purge && \
