@@ -68,7 +68,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'drf_yasg',
     'rest_framework',
     'rest_framework.authtoken',
     'drf_spectacular',
@@ -152,13 +151,31 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+#################################################################################
+# Documentation
+#################################################################################
+read_me = ""
+
+with open("serverlessWorkflow/README.md", encoding='utf-8') as f:
+    read_me = f.read()
+
+version = ""
+
+with open("../version", encoding='utf-8') as f:
+    version = f.read()
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Advancedware Books-ServerlessWorkFlow API',
-    'DESCRIPTION': 'Your project description',
-    'VERSION': '1.0.0',
+    'DESCRIPTION': read_me,
+    'VERSION': version,
     'SERVE_INCLUDE_SCHEMA': False,
     # OTHER SETTINGS
 }
+
+#################################################################################
+# Databases
+#################################################################################
 
 DATABASES = {
     'default': env.db()
@@ -171,13 +188,3 @@ DATABASES = {
 ###########################################
 
 CURRENT_HOST   = os.environ.get('CURRENT_HOST', env('CURRENT_HOST'))
-###########################################
-# Storages
-###########################################
-
-GS_BUCKET_NAME          = env("GS_BUCKET_NAME")
-
-DEFAULT_FILE_STORAGE    = "storages.backends.gcloud.GoogleCloudStorage"
-STATICFILES_STORAGE     = "storages.backends.gcloud.GoogleCloudStorage"
-
-GS_DEFAULT_ACL          = "publicRead"

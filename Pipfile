@@ -12,13 +12,12 @@ psycopg2-binary = "*"
 gunicorn = "*"
 google-cloud-tasks = "==2.7.1"
 google-cloud-secret-manager = "==2.7.1"
-django-storages = {extras = ["google"], version = "1.12.3"}
-drf-yasg = "==1.20.0"
 pillow = "*"
 querybuilder = {editable = true, git = "ssh://git@repo-4.github.com/advance-tools/django-querybuilder.git"}
 drf-spectacular = "*"
 
 [dev-packages]
+semver = "*"
 
 [requires]
 python_version = "3.8"

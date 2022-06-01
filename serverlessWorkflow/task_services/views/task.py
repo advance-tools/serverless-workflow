@@ -8,7 +8,6 @@ from rest_framework.exceptions import APIException
 
 from django.core.exceptions import FieldDoesNotExist, FieldError, ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef 
 from django.db.models.deletion import ProtectedError
 from django.db.transaction import TransactionManagementError
 
