@@ -101,7 +101,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    
     email       = serializers.EmailField(required=True)
     password    = serializers.CharField(required=True,write_only=True)
     token       = serializers.SerializerMethodField(help_text="User's Token Key will be given in response if User has logged in Correctly")

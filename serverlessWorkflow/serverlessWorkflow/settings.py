@@ -170,6 +170,12 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': read_me,
     'VERSION': version,
     'SERVE_INCLUDE_SCHEMA': False,
+    'TAGS' : [
+       {"name": "choices"},
+       {"name": "profile"},
+       {"name": "user"},
+       {"name": "task"},
+    ],
     # OTHER SETTINGS
 }
 
