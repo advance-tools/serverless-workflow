@@ -22,7 +22,7 @@ RUN python -m pip install --upgrade pip && \
 
 # Copy local code to the container image.
 COPY ./serverlessWorkflow ./serverlessWorkflow/
-COPY ./static ./static/
+# COPY ./static ./static/
 COPY ./credentials.json .
 
 ENV GOOGLE_APPLICATION_CREDENTIALS="/workspace/credentials.json"

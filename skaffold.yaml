@@ -1,4 +1,4 @@
-apiVersion: skaffold/v1beta8
+apiVersion: skaffold/v3
 kind: Config
 
 build:
@@ -8,7 +8,13 @@ build:
       template: "{{.BUILD_ID}}"
 
   artifacts:
-  - image: eu.gcr.io/advancedware/serverless-workflow
+  - image: asia.gcr.io/advancedware/serverless-workflow-backend
     context: .
     docker:
-      dockerfile: ./Dockerfile
+      dockerfile: ./gunicorn/Dockerfile
+      cacheFrom:
+      # googleCloudBuild replaces cache references to the artifact image with
+      # the tagged image reference, useful for caching from the previous build.
+      - asia.gcr.io/advancedware/serverless-workflow-backend:latest
+  googleCloudBuild:
+    projectId: "advancedware"

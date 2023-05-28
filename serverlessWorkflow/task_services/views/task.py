@@ -188,8 +188,8 @@ class TaskCompletedAPIView(UpdateAPIView):
                     # save model
                     return serializer.save()
 
-        except (FieldDoesNotExist, FieldError, TransactionManagementError, IntegrityError, AttributeError) as exc:
-
+        except Exception as exc:
+            print(exc)
             raise ServerError(exc)
 
 
@@ -224,18 +224,19 @@ class TaskRetryAPIView(DestroyAPIView):
             raise ServerError(exc)
     
     def perform_destroy(self, instance: Task):
+        
+        # if User.objects.filter(id=self.kwargs.get('my_user')).exists():
 
-        if User.objects.filter(id=self.kwargs.get('my_user')).exists():
-
-            if instance.parent_task != None:
+        #     if instance.parent_task != None:
                     
-                raise APIException(detail=f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_400_BAD_REQUEST)
-        else:
+        #         raise APIException(detail=f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_400_BAD_REQUEST)
+        # else:
 
-            raise APIException(detail=f"User with id: {self.kwargs.get('my_user')} does not exists.", code=status.HTTP_400_BAD_REQUEST)
+        #     raise APIException(detail=f"User with id: {self.kwargs.get('my_user')} does not exists.", code=status.HTTP_400_BAD_REQUEST)
         
         # find children task of given id with task status ERRORS.
-        error_tasks = Task.objects.filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
+        # error_tasks = Task.objects.filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
+        error_tasks = Task.objects.filter(id=instance.id) #filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
         
         if error_tasks.exists():
             

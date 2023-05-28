@@ -127,7 +127,7 @@ class TaskCheckAPIView(APIView):
                 # getting url for check endpoint
                 url = reverse("task-check", kwargs={"my_user":obj.my_user_id,"id": obj.parent_task_id})
                 
-                create_http_task(settings.CURRENT_HOST + url, payload={}, method="PUT")
+                create_http_task(settings.CURRENT_HOST + url, payload={}, method="PUT", in_seconds=5)
                 
                 return Response(data={"detail": "The current task's sub-tasks have been completed. Now we are initiating the same check for current task's parent_task."}, status=status.HTTP_200_OK)
             
