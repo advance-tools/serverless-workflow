@@ -31,6 +31,6 @@ cd /workspace/serverlessWorkflow && \
 pipenv run python manage.py check && \
 pipenv run python manage.py migrate --database=default && \
 echo "Test REVERSE MIGRATION" && \
-pipenv run python manage.py migrate sesrvices $(cat last_migration.txt) && \
+pipenv run python manage.py migrate task_services $(cat last_migration.txt) && \
 echo "Re Migrate" && \
 pipenv run python manage.py migrate --database=default
