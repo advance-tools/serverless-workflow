@@ -17,18 +17,20 @@ EMAIL_HOST_PASSWORD=bot@advancedware" > .env && \
 
 cd / && \
 git clone https://github.com/advance-tools/django-querybuilder.git && \
+
 cd /workspace && \
 pipenv uninstall querybuilder && \
 pipenv install --ignore-pipfile --dev && \
+
 pipenv install -e /django-querybuilder && \
+
 mkdir /workspace/django-querybuilder && \
 cp -r /django-querybuilder/* /workspace/django-querybuilder/ && \
 
 cd /workspace/serverlessWorkflow && \
 pipenv run python manage.py check && \
-pipenv run python manage.py migrate token_blacklist --database=default && \
 pipenv run python manage.py migrate --database=default && \
 echo "Test REVERSE MIGRATION" && \
-pipenv run python manage.py migrate services $(cat last_migration.txt) && \
+pipenv run python manage.py migrate sesrvices $(cat last_migration.txt) && \
 echo "Re Migrate" && \
 pipenv run python manage.py migrate --database=default
