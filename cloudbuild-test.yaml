@@ -1,0 +1,34 @@
+---
+  steps:
+    #####################
+    # Test
+    #####################
+    - 
+      id: 'test migrations'
+      name: asia.gcr.io/$PROJECT_ID/ubuntu-psql:latest
+      args:
+        - '-c'
+        - |-
+          chmod +x /workspace/cloudbuild-test-step1.sh && \
+          /workspace/cloudbuild-test-step1.sh
+
+      dir: /workspace/serverlessWorkflow
+      env:
+        - _BUILD_ID=$BUILD_ID
+        - _GIT_USERNAME=${_GIT_USERNAME}
+        - _GIT_AUTH_TOKEN=${_GIT_AUTH_TOKEN}
+        - _GOOGLE_CREDENTIALS=${_GOOGLE_CREDENTIALS}
+        - _SECRET_NAME=${_SECRET_NAME}
+
+  timeout: 10000s
+
+# pipenv run python manage.py test --debug-mode -v 3 --no-input &&
+# &&
+#         ( \
+#           pipenv run python manage.py runserver &
+#           ( \
+#             git clone https://${_GIT_USERNAME}:${_GIT_AUTH_TOKEN}@github.com/impriyanshub/books-api-test.git && \
+#             cd books-api-test && mkdir cache && echo "HOST_URL=http://localhost:8000" > .env && \
+#             npm install && npm run test \
+#           ) \
+#         )

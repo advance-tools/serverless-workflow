@@ -59,7 +59,6 @@ DEBUG = env('DEBUG', cast=bool, default=False)
 
 ALLOWED_HOSTS = ['*']
 
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -68,7 +67,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'drf_yasg',
     'rest_framework',
     'rest_framework.authtoken',
     'drf_spectacular',
@@ -122,13 +120,10 @@ USE_TZ = True
 
 AUTH_USER_MODEL = 'task_services.User'
 
-
 FIXTURE_DIRS = ("services/fixtures/",)
 
 STATIC_ROOT = os.path.join(os.path.dirname(BASE_DIR), 'static')
 STATIC_URL = '/static/'
-
-EMAIL_CONFIG = env.email_url('EMAIL_URL')
 
 ADMINS = (
     ('Priyanshu Bhatnagar', 'priyanshu@advancedware.in'),
@@ -145,20 +140,44 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'task_services.pagination.KeysetPagination',
     'DEFAULT_FILTER_BACKENDS': ['rest_framework.filters.OrderingFilter'],
     'DEFAULT_AUTHENTICATION_CLASSES':('rest_framework.authentication.TokenAuthentication',),
-    'PAGE_SIZE': 100,
+    'PAGE_SIZE': 10,
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+#################################################################################
+# Documentation
+#################################################################################
+read_me = ""
+
+with open("serverlessWorkflow/README.md", encoding='utf-8') as f:
+    read_me = f.read()
+
+version = ""
+
+with open("../version", encoding='utf-8') as f:
+    version = f.read()
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Advancedware Books-ServerlessWorkFlow API',
-    'DESCRIPTION': 'Your project description',
-    'VERSION': '1.0.0',
+    'DESCRIPTION': read_me,
+    'VERSION': version,
     'SERVE_INCLUDE_SCHEMA': False,
+    'TAGS' : [
+       {"name": "choices"},
+       {"name": "profile"},
+       {"name": "user"},
+       {"name": "task"},
+    ],
     # OTHER SETTINGS
 }
+
+#################################################################################
+# Databases
+#################################################################################
 
 DATABASES = {
     'default': env.db()
@@ -169,15 +188,69 @@ DATABASES = {
 ###########################################
 # Cloud Tasks
 ###########################################
-
 CURRENT_HOST   = os.environ.get('CURRENT_HOST', env('CURRENT_HOST'))
-###########################################
-# Storages
-###########################################
 
-GS_BUCKET_NAME          = env("GS_BUCKET_NAME")
+###################################
+# Email
+###################################
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', env('EMAIL_HOST_USER'))
+# we have to create an app here: "https://myaccount.google.com/security" -> App password
+# because google will not allow third party smtp server to send emails with email-password only.
+# for this 2-factor authentication should be enable in Host user`s email.
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', env('EMAIL_HOST_PASSWORD'))
 
-DEFAULT_FILE_STORAGE    = "storages.backends.gcloud.GoogleCloudStorage"
-STATICFILES_STORAGE     = "storages.backends.gcloud.GoogleCloudStorage"
+###################################
+# Loggers
+###################################
 
-GS_DEFAULT_ACL          = "publicRead"
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    # "filters": {
+    #     "require_debug_false": {
+    #         "()": "django.utils.log.RequireDebugFalse",
+    #     },
+    #     "require_debug_true": {
+    #         "()": "django.utils.log.RequireDebugTrue",
+    #     },
+    # },
+    "formatters": {
+        "django.server": {
+            "()": "django.utils.log.ServerFormatter",
+            "format": "[{server_time}] {message}",
+            "style": "{",
+        }
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            # "filters": ["require_debug_true"],
+            "class": "logging.StreamHandler",
+        },
+        "django.server": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "django.server",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            # "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+            "include_html": True,
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "mail_admins"],
+            "level": "INFO",
+        },
+        "django.server": {
+            "handlers": ["django.server"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

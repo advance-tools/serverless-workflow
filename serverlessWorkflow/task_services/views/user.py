@@ -5,16 +5,32 @@ from django.core.exceptions import  FieldError
 from django.db import IntegrityError, transaction
 from django.db.transaction import TransactionManagementError
 
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from task_services.exceptions import ServerError
 from task_services.models import User
 from task_services.serializers.user import UserSerializer, UserListSerializer, UserUpdateSerializer, UserProfileSerializer
 
 
+
+with open('./task_services/views/docs/user/user_list.md') as f:
+    user_list = f.read()
+
+with open('./task_services/views/docs/user/user_create.md') as f:
+    user_create = f.read()
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=['user'],
+        summary='List All Users',
+        description=user_list,
+    ),
+    post=extend_schema(
+        tags=['user'],
+        summary='Create an User',
+        description=user_create,
+    ),
+)
 class UserListCreateAPIView(ListCreateAPIView):
-    """
-    post: User Create\n
-    This endpoint will return new user created with provided input.
-    """
     permission_classes: tuple   = (AllowAny,)
     pagination_class            = CursorPagination
     ordering: tuple             = ('-timestamp',)
@@ -48,31 +64,37 @@ class UserListCreateAPIView(ListCreateAPIView):
             raise ServerError(exc)
 
 
+
+with open('./task_services/views/docs/user/user_retrieve.md') as f:
+    user_retrieve = f.read()
+
+with open('./task_services/views/docs/user/user_update.md') as f:
+    user_update = f.read()
+
+with open('./task_services/views/docs/user/user_delete.md') as f:
+    user_delete = f.read()
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=['user'],
+        summary='Fetch User by ID',
+        description=user_retrieve,
+    ),
+    put=extend_schema(
+        tags=['user'],
+        summary='Update User by ID',
+        description=user_update,
+    ),
+    delete=extend_schema(
+        tags=['user'],
+        summary='Delete User by ID',
+        description=user_delete,
+    ),
+)
 class UserRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
-    """
-    Retrieve, Update or Delete an Existing User Instance.
-
-    get: User RETRIEVE\n
-    This endpoint will return User information of authenticated user.The data will appear in the form of key/value properties. The data can be retrieved with the help of the id of that User.
-
-    ### Authentication:
-    * Required Token Authentication
-
-    put: User UPDATE\n
-    This endpoint will update information of authenticated user.A User update request must have all data in the correct form of key/value property. The collection must contain all the required properties.
-
-    ### Authentication:
-    * Required Token Authentication
-
-    delete: User DELETE\n
-    This endpoint will delete authenticated user.User deletion will also delete all the task associate with that user.
-
-    ### Authentication:
-    * Required Token Authentication
-    """
-
     serializer_class            = UserUpdateSerializer
     permission_classes: tuple   = (IsAuthenticated,)
+    http_method_names           = ['get', 'put', 'delete' 'head', 'option']
 
     def get_queryset(self):
 
@@ -94,14 +116,41 @@ class UserRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
 
         except (FieldError, TransactionManagementError, IntegrityError, AttributeError) as exc:
 
-            raise ServerError(exc)        
+            raise ServerError(exc)
+
+    def perform_destroy(self, instance: User):
+
+        try:
+
+            with transaction.atomic():
+
+                instance.delete()
+            
+        except Exception as exc:
+
+            raise ServerError(exc)
 
 
-class UserProfileAPIView(CreateAPIView,DestroyAPIView):
-    """
-    post: Profile CREATE\n
-    This endpoint will return Authorization token for user if user has provided correct email and password.
-    """
+
+with open('./task_services/views/docs/user/user_profile_create.md') as f:
+    user_profile_create = f.read()
+
+with open('./task_services/views/docs/user/user_profile_destroy.md') as f:
+    user_profile_destroy = f.read()
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=['profile'],
+        summary='Perform Signin',
+        description=user_profile_create,
+    ),
+    delete=extend_schema(
+        tags=['profile'],
+        summary='Perform Signout',
+        description=user_profile_destroy,
+    ),
+)
+class UserProfileAPIView(CreateAPIView, DestroyAPIView):
     serializer_class            = UserProfileSerializer
     permission_classes: tuple   = (AllowAny,)
 
