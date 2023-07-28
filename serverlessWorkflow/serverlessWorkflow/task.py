@@ -33,7 +33,7 @@ def create_http_task(url: str, payload: Union[Optional[Dict[str, Any]], str] = N
         if isinstance(payload, dict):
             # Convert dict to JSON string
             payload = cast(str, json.dumps(payload))
-
+        
         # The API expects a payload of type bytes.
         converted_payload = payload.encode()
 

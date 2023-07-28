@@ -8,10 +8,11 @@ from rest_framework.exceptions import APIException
 
 from django.core.exceptions import FieldDoesNotExist, FieldError, ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef 
 from django.db.models.deletion import ProtectedError
 from django.db.transaction import TransactionManagementError
 
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
+from rest_framework import serializers
 from querybuilder import querybuilder
 from serverlessWorkflow.task import create_http_task
 from task_services.exceptions import ServerError, ObjectNotFound, CannotDelete 
@@ -22,11 +23,22 @@ from task_services.serializers.task import InitTaskSerializer, CompleteTaskSeria
 from uuid import uuid4
 
 
+
+with open('./task_services/views/docs/task/choices.md') as f:
+    task_choice = f.read()
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=['choices'],
+        summary='List all Choices of the APIs',
+        description=task_choice,
+        request=None,
+        responses=inline_serializer(name='ChoicesAPISerializer', fields={
+            'data': serializers.JSONField(),
+        }),
+    ),
+)
 class ChoicesAPIView(APIView):
-    """
-    get: Task Choices\n
-    This endpoint will return all the Choices need in Task.
-    """
     serializer_class = ChoicesSerializer
 
     def get(self, request, *args, **kwargs):
@@ -40,19 +52,18 @@ class ChoicesAPIView(APIView):
         return Response(data=data, status=status.HTTP_200_OK)
 
 
-class TaskListAPIView(ListAPIView):
-    """
-    get: Task List\n
-    This endpoint will return all the task Initiated by user.
 
-    field name          | method | lookup | example
-    --------------------|--------|-------------|----------
-    id                  | filter or exclude | in | 1. ?id=`58b346e6-7b83-4ab6-8da4-d97399e15dbc`,<br> 2. ?exclude:id=`58b346e6-7b83-4ab6-8da4-d97399e15dbc`
-    parent_task         | filter or exclude | in, isnull | 1. ?parent_task='58b346e6-7b83-4ab6-8da4-d97399e15dbc'<br> 2.?parent_task.isnull=tru
-    task_status         | filter or exclude | in | 1. ?task_status=0 <br> 2. ?exclude:task_status=2
-    code                | filter or exclude | in, contains, icontains, exact, iexact, startswith, endswith | 1. ?code.startswith=`registartion--58b346e6-7b83-4ab6-8da4-d97399e15dbc`
-    created_at          | filter or exclude | lte, gte, gt, lt, range, startswith, endswith, in            | 1. ?created_at.lte=`2020-03-22`,<br> 2. ?filter:created_at.gte=`2020-03-22`, <br> 3. ?exclude:created_at.range=`2020-03-22,2020-11-26`
-    """
+with open('./task_services/views/docs/task/task_list.md') as f:
+    task_list = f.read()
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=['task'],
+        summary='List All Tasks',
+        description=task_list,
+    ),
+)
+class TaskListAPIView(ListAPIView):
     serializer_class            = ListTaskSerializer
     permission_classes: tuple   = (AllowAny,)
     pagination_class            = CursorPagination
@@ -85,17 +96,19 @@ class TaskListAPIView(ListAPIView):
 
             raise ServerError(exc)
 
-    
-class TaskInitAPIView(CreateAPIView):
-    """
-    post: Task Init POST\n
-    An api endpoint to Initiate Tasks.
 
-    | Validation | Error Code | Error Messages |
-    | Primary Key(id) should be Unique. The format of Id should be UUID and you cannot re-enter the id. | 406 | Task with given id already exists. |
-    | If the given user exists | 404 | User with given id does not exists. |
-    | User of current task and it`s parent task should be same if exists.| 400 | Parent Task of Current task is not valid |
-    """
+
+with open('./task_services/views/docs/task/task_init.md') as f:
+    task_init = f.read()
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=['task'],
+        summary='Register Initialization of Task from Node',
+        description=task_init,
+    ),
+)
+class TaskInitAPIView(CreateAPIView):
     serializer_class            = InitTaskSerializer
     permission_classes:tuple    = (AllowAny,)
     
@@ -106,6 +119,7 @@ class TaskInitAPIView(CreateAPIView):
     def perform_create(self, serializer: InitTaskSerializer):
 
         try:
+
             if serializer.is_valid(raise_exception=True):
 
                 with transaction.atomic():
@@ -129,40 +143,21 @@ class TaskInitAPIView(CreateAPIView):
             raise ServerError(exc)
 
 
+
+with open('./task_services/views/docs/task/task_completed.md') as f:
+    task_completed = f.read()
+
+@extend_schema_view(
+    put=extend_schema(
+        tags=['task'],
+        summary='Register Completion of Task from Node',
+        description=task_completed,
+    ),
+)
 class TaskCompletedAPIView(UpdateAPIView):
-
-    """
-    put: Task Completed PUT\n
-    An api endpoint to Mark Task Completed.
-
-    ## Things happening in this endpoint:
-    * Checking if TaskStatus is Completed
-        * then Triggering all ImmediateNext Tasks One by One
-    * Checking if Length of ImmediateNext is 0 or None
-        * then Check endpoint is called for the Current Task
-
-    | Validation | Error Code | Error Messages |
-    |------------|------------|----------------|
-    | Task with given id exists | 404 | Task with given id does not exists. |
-    | If the given user exists | 404 | User with given id does not exists. |
-    | User of current task and it`s parent task should be same if exists.| 400 | Parent Task of Current task is not valid |
-    | If ImmediateNext is None or [] then SubTaskNext should be None or [] | 400 | Sub Task Next should be None when Immediate Next is None. |
-
-    patch: Task Completed PATCH\n
-    (PUT Recommended) An api endpoint to Mark Task Completed.
-
-    ## Things happening in this endpoint:
-    * Checking if TaskStatus is Completed
-        * then Triggering all ImmediateNext Tasks One by One
-    * Checking if Length of ImmediateNext is 0 or None
-        * then Check endpoint is called for the Current Task
-
-    | Validation | Error Code | Error Messages |
-    |------------|------------|----------------|
-    | If ImmediateNext is None or [] then SubTaskNext should be None or [] | 400 | Sub Task Next should be None when Immediate Next is None. |
-    """
     serializer_class            = CompleteTaskSerializer
     permission_classes: tuple   = (AllowAny,)
+    http_method_names           = ['put', 'head', 'option']
 
     def get_queryset(self):
 
@@ -193,22 +188,25 @@ class TaskCompletedAPIView(UpdateAPIView):
                     # save model
                     return serializer.save()
 
-        except (FieldDoesNotExist, FieldError, TransactionManagementError, IntegrityError, AttributeError) as exc:
-
+        except Exception as exc:
+            print(exc)
             raise ServerError(exc)
 
 
+
+with open('./task_services/views/docs/task/task_retry.md') as f:
+    task_retry = f.read()
+
+@extend_schema_view(
+    delete=extend_schema(
+        tags=['task'],
+        summary='Retry Task',
+        description=task_retry,
+        request=None,
+        responses=None
+    ),
+)
 class TaskRetryAPIView(DestroyAPIView):
-    """
-    delete:Task DELETE and RETRY 
-    This endpoint will delete the specified task if task_status is error and Retry with same payload.
-    
-    | Validation | Error Code | Error Messages |
-    | Task with given id Exists .| 404 | Task with given id does not Exists. |
-    | If the given user exists | 404 | User with given id does not exists.|
-    | Parent task is null | 400 | Task is not root node and has Parent Task. |
-    | Task status is Error | 400 | Task is Completed or Pending. Only Task having status Error can be retry. |
-    """
     permission_classes: tuple   = (AllowAny,)
 
     def get_object(self):
@@ -226,18 +224,19 @@ class TaskRetryAPIView(DestroyAPIView):
             raise ServerError(exc)
     
     def perform_destroy(self, instance: Task):
+        
+        # if User.objects.filter(id=self.kwargs.get('my_user')).exists():
 
-        if User.objects.filter(id=self.kwargs.get('my_user')).exists():
-
-            if instance.parent_task != None:
+        #     if instance.parent_task != None:
                     
-                raise APIException(detail=f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_400_BAD_REQUEST)
-        else:
+        #         raise APIException(detail=f"Task is not root task and has parent task with id: {instance.parent_task.id}.", code=status.HTTP_400_BAD_REQUEST)
+        # else:
 
-            raise APIException(detail=f"User with id: {self.kwargs.get('my_user')} does not exists.", code=status.HTTP_400_BAD_REQUEST)
+        #     raise APIException(detail=f"User with id: {self.kwargs.get('my_user')} does not exists.", code=status.HTTP_400_BAD_REQUEST)
         
         # find children task of given id with task status ERRORS.
-        error_tasks = Task.objects.filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
+        # error_tasks = Task.objects.filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
+        error_tasks = Task.objects.filter(id=instance.id) #filter(code__startswith=instance.code, task_status=StatusChoices.ERRORS).order_by('created_at')
         
         if error_tasks.exists():
             
@@ -262,17 +261,20 @@ class TaskRetryAPIView(DestroyAPIView):
             raise APIException(detail="Task has Completed or Pending status\n Only Task having status Error can be retried.", code=status.HTTP_400_BAD_REQUEST)
 
 
+
+with open('./task_services/views/docs/task/task_delete.md') as f:
+    task_delete = f.read()
+
+@extend_schema_view(
+    delete=extend_schema(
+        tags=['task'],
+        summary='Delete Task',
+        description=task_delete,
+        request=None,
+        responses=None
+    ),
+)
 class TaskDeleteAPIView(DestroyAPIView):
-    """
-    delete: Task DELETE\n
-    An API Endpoint to delete parent task that is Completed. Only Task that has no parent task and task status are Completed or Errors and sub task status are Completed or Errors can only be Deleted.
-    
-    | Validation | Error Code | Error Messages |
-    | Task with given id Exists .| 404 | Task with given id does not Exists. |
-    | If the given user exists | 404 | User with given id does not exists.|
-    | Parent task is null | 400 | Task is not root node and has Parent Task. |
-    | Task status and Sub task status is COMPLETED or ERROR | 403 | Task status is PENDING. (task_status:0 or sub_task_status:0) |
-    """
     permission_classes: tuple   = (AllowAny,)
     
     def get_object(self):

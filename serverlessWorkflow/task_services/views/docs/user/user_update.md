@@ -1,0 +1,1 @@
+    This endpoint will update information of authenticated user.A User update request must have all data in the correct form of key/value property. The collection must contain all the required properties.

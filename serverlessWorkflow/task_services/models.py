@@ -2,12 +2,13 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.contrib.postgres.fields import ArrayField
 from django.db.models.functions import MD5
+
 from task_services.choices import StatusChoices
+
 from datetime import datetime
 from uuid import UUID, uuid4
 from typing import Optional, Dict, Any, List
 
-# Create your models here.
 
 class UserManager(BaseUserManager):
 
@@ -51,7 +52,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-
     id: UUID                = models.UUIDField(primary_key=True, editable=False, default=uuid4)
     email: str              = models.EmailField(max_length=255, unique=True, default="abc@gmail.com")
     name: str               = models.CharField(max_length=100)
@@ -76,7 +76,6 @@ class User(AbstractBaseUser):
 
 
 class Task(models.Model):
-
     id: UUID                            = models.UUIDField(primary_key=True, editable=False, default=uuid4)
     parent_task                         = models.ForeignKey("self", null=True, on_delete=models.CASCADE, related_name="sub_task") # type: Task
     my_user: User                       = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tasks")

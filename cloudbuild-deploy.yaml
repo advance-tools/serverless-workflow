@@ -1,0 +1,126 @@
+---
+  steps:
+    #####################
+    # Build Deps
+    ######################
+    -
+      name: python:3.8.0
+      entrypoint: bash
+      args:
+        - '-c'
+        - |-
+          chmod +x /workspace/cloudbuild-deploy-step0.sh && \
+          /workspace/cloudbuild-deploy-step0.sh
+      env:
+        - _BUILD_ID=$BUILD_ID
+        - _GIT_USERNAME=${_GIT_USERNAME}
+        - _GIT_AUTH_TOKEN=${_GIT_AUTH_TOKEN}
+        - _GOOGLE_CREDENTIALS=${_GOOGLE_CREDENTIALS}
+        - _SECRET_NAME=${_SECRET_NAME}
+        - _SERVICE=${_SERVICE}
+        - _SERVICE_REGION=${_SERVICE_REGION}
+        - _TAG=${_TAG}
+
+    ##############################
+    #  Build Image
+    ##############################
+    -
+      name: gcr.io/k8s-skaffold/skaffold
+      args:
+        - skaffold
+        - build
+        - "-f"
+        - skaffold.yaml
+      env:
+        - BUILD_ID=$BUILD_ID
+
+    -
+      id: Update Tags
+      name: google/cloud-sdk
+      entrypoint: /bin/bash
+      args:
+        - '-c'
+        - |
+          gcloud container images add-tag asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:$BUILD_ID asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:latest --quiet
+
+    ##############################
+    #  Migrations / Fallback
+    ##############################
+    -
+      name: gcr.io/google-appengine/exec-wrapper
+      entrypoint: '/bin/bash'
+      args:
+        - '-c'
+        - |-
+          /buildstep/execute.sh \
+          -i asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:latest \
+          -n 'cloudbuild --volume /workspace:/workspace' \
+          -s $PROJECT_ID:europe-west1:advancedware-store \
+          -e SECRET_NAME=${_SECRET_NAME} \
+          -- /bin/bash -c \
+          '(\
+            echo $(python manage.py showmigrations --list task_services | grep "\[X\]" | tail -1 | cut -d " " -f 3) > /workspace/last_migration.txt && \
+            python manage.py showmigrations && \
+            python manage.py migrate && \
+            python manage.py collectstatic --no-input && \
+            echo "migration=PASS" > /workspace/migration.txt \
+          ) \
+          || \
+          ( \
+            echo "REVERSING MIGRATION" && \
+            python manage.py migrate task_services $(cat /workspace/last_migration.txt) && \
+            echo "migration=FAIL" > /workspace/migration.txt && \
+            exit 0 \
+          )'
+
+    #############################
+    # Deployment / Cleanup
+    #############################
+    -
+      name: google/cloud-sdk
+      entrypoint: /bin/bash
+      args:
+        - '-c'
+        - |-
+          if [ $(cat migration.txt | awk -F '=' '{print $2}') = 'PASS' ] ; then
+
+            gcloud container images add-tag asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:latest asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:${_TAG} --quiet &&
+
+            gcloud run deploy ${_SERVICE} --image asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:$BUILD_ID --platform managed --region ${_SERVICE_REGION} --no-traffic --tag blue ;
+
+          else
+
+            gcloud container images delete asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:latest --force-delete-tags --quiet &&
+
+            gcloud container images add-tag asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:${_TAG} asia.gcr.io/$PROJECT_ID/serverless-workflow-backend:latest --quiet &&
+
+            exit -1 ;
+
+          fi
+    #############################
+    # Test Deployment
+    #############################
+    # -
+    #   name: asia.gcr.io/advancedware/books-api-test:latest
+    #   entrypoint: /bin/sh
+    #   args:
+    #     - '-c'
+    #     - |-
+    #       echo 'HOST_URL=https://blue---${_SERVICE}-76ejuaahcq-ew.a.run.app' > .env &&
+    #       npm run test
+    #   dir: /
+    #############################
+    # Load Test Deployment
+    #############################
+    #############################
+    # Migrate Traffic
+    #############################
+    -
+      name: google/cloud-sdk
+      entrypoint: /bin/bash
+      args:
+        - '-c'
+        - |-
+          gcloud run services update-traffic ${_SERVICE} --to-tags blue=100 --platform managed --region ${_SERVICE_REGION}
+
+  timeout: 10000s

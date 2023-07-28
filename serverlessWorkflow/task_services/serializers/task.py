@@ -204,7 +204,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
         if User.objects.filter(id=value.id).exists():
 
             return value
-
+        # print(f"User with id: {value.id} does not exists.")
         raise serializers.ValidationError(detail=f"User with id: {value.id} does not exists.")
 
     def validate(self, data: OrderedDict) -> OrderedDict:
@@ -216,7 +216,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
                 parent_task_user = Task.objects.get(id=data['parent_task'].id).my_user
 
                 if data['my_user'] != parent_task_user:
-
+                    # print("Parent Task of Current task is not valid")
                     raise serializers.ValidationError("Parent Task of Current task is not valid")
 
         # If ImmediateNext is None or []
@@ -224,7 +224,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
 
             # then SubTaskNext should be None or [] as well.
             if data.get("sub_task_next") is not None and len(data["sub_task_next"]) != 0:
-
+                # print("Sub Task Next should be None when Immediate Next is None.")
                 # raise error
                 raise serializers.ValidationError(detail="Sub Task Next should be None when Immediate Next is None.")
 
@@ -260,7 +260,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
 
             # 8001
             # print(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}")
-            create_http_task(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}", payload={}, method="PUT")
+            create_http_task(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.parent_task_id}", payload={}, method="PUT", in_seconds=5)
         
         elif (instance.immediate_next is None or len(instance.immediate_next) == 0) and instance.parent_task_id is None:
 
@@ -269,7 +269,7 @@ class CompleteTaskSerializer(serializers.ModelSerializer):
             instance.save()
 
             # 8001
-            create_http_task(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.id}", payload={}, method="PUT")
+            create_http_task(f"{settings.CURRENT_HOST}/api/tasks/check/{instance.my_user_id}/{instance.id}", payload={}, method="PUT", in_seconds=5)
 
         # Checking if current task's status is Completed
         elif instance.immediate_next is not None and len(instance.immediate_next) > 0 and instance.task_status == StatusChoices.COMPLETED:

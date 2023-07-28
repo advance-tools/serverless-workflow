@@ -7,6 +7,8 @@ from django.conf import settings
 from django.urls import reverse
 
 from serverlessWorkflow.task import create_http_task
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
+from rest_framework import serializers
 
 from task_services.models import Task
 from task_services.choices import SubTaskInputTypeChoices, StatusChoices
@@ -14,21 +16,22 @@ from task_services.choices import SubTaskInputTypeChoices, StatusChoices
 from typing import Optional
 
 
-class TaskCheckAPIView(APIView):
-    """
-    put: Task Check PUT\n
-    An api endpoint to Check Task's Completion.
 
-    ## Things happening in this endpoint:
-    * Checking if all the children's `task_status` and `sub_task_status` is **Completed** of the Current Task and Current Task's `sub_task_next's length` is greater than **0**.
-        * then all the Sub Task will be triggered one by one.
-    * Checking if all the children's `task_status` and `sub_task_status` is **Completed** of the Current Task and Current Task's `sub_task_next's length` is **0**.
-        * then `SubTaskStatus` of the Current Task will be Marked as **Completed**.
-        * Checking if Current Task's `parent_task` is **not None**.
-            * then triggering check for the parent_task.
-        * Checking if Current Task's `parent_task` is **None**.
-            * **Deleting** the `Current Task` and its `Children`.
-    """
+with open('./task_services/views/docs/task/task_check.md') as f:
+    task_check = f.read()
+
+@extend_schema_view(
+    put=extend_schema(
+        tags=['task'],
+        summary='Trigger Status Check on a Task',
+        description=task_check,
+        request=None,
+        responses=inline_serializer(name='TaskCheckAPISerializer', fields={
+           'detail': serializers.CharField(read_only=True)
+        }),
+    ),
+)
+class TaskCheckAPIView(APIView):
     permission_classes: tuple = (AllowAny,)
 
     def put(self, request, *args, **kwargs):
@@ -124,7 +127,7 @@ class TaskCheckAPIView(APIView):
                 # getting url for check endpoint
                 url = reverse("task-check", kwargs={"my_user":obj.my_user_id,"id": obj.parent_task_id})
                 
-                create_http_task(settings.CURRENT_HOST + url, payload={}, method="PUT")
+                create_http_task(settings.CURRENT_HOST + url, payload={}, method="PUT", in_seconds=5)
                 
                 return Response(data={"detail": "The current task's sub-tasks have been completed. Now we are initiating the same check for current task's parent_task."}, status=status.HTTP_200_OK)
             
