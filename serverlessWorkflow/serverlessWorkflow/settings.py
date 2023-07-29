@@ -167,10 +167,10 @@ SPECTACULAR_SETTINGS = {
     'VERSION': version,
     'SERVE_INCLUDE_SCHEMA': False,
     'TAGS' : [
-       {"name": "choices"},
-       {"name": "profile"},
-       {"name": "user"},
-       {"name": "task"},
+        {"name": "User"},
+        {"name": "Profile"},
+        {"name": "Choices"},
+        {"name": "Task"},
     ],
     # OTHER SETTINGS
 }

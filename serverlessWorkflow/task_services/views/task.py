@@ -1,7 +1,5 @@
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, UpdateAPIView, ListAPIView, DestroyAPIView
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.pagination import CursorPagination
 from rest_framework.exceptions import APIException
@@ -11,46 +9,14 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.db.transaction import TransactionManagementError
 
-from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
-from rest_framework import serializers
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from querybuilder import querybuilder
 from serverlessWorkflow.task import create_http_task
-from task_services.exceptions import ServerError, ObjectNotFound, CannotDelete 
-from task_services.choices import StatusChoices, ImmediateInputTypeChoices, SubTaskInputTypeChoices
+from task_services.exceptions import ServerError, ObjectNotFound, CannotDelete
 from task_services.models import Task, User
-from task_services.serializers.task import InitTaskSerializer, CompleteTaskSerializer, ChoicesSerializer, ListTaskSerializer
+from task_services.serializers.task import InitTaskSerializer, CompleteTaskSerializer, ListTaskSerializer
 
 from uuid import uuid4
-
-
-
-with open('./task_services/views/docs/task/choices.md') as f:
-    task_choice = f.read()
-
-@extend_schema_view(
-    get=extend_schema(
-        tags=['choices'],
-        summary='List all Choices of the APIs',
-        description=task_choice,
-        request=None,
-        responses=inline_serializer(name='ChoicesAPISerializer', fields={
-            'data': serializers.JSONField(),
-        }),
-    ),
-)
-class ChoicesAPIView(APIView):
-    serializer_class = ChoicesSerializer
-
-    def get(self, request, *args, **kwargs):
-
-        data = {
-            "status_choices"                : dict(StatusChoices.choices),
-            "immediate_input_type_choices"  : dict(ImmediateInputTypeChoices.choices),
-            "sub_task_input_type_choices"   : dict(SubTaskInputTypeChoices.choices)
-        }
-
-        return Response(data=data, status=status.HTTP_200_OK)
-
 
 
 with open('./task_services/views/docs/task/task_list.md') as f:
@@ -58,7 +24,7 @@ with open('./task_services/views/docs/task/task_list.md') as f:
 
 @extend_schema_view(
     get=extend_schema(
-        tags=['task'],
+        tags=['Task'],
         summary='List All Tasks',
         description=task_list,
     ),
@@ -103,7 +69,7 @@ with open('./task_services/views/docs/task/task_init.md') as f:
 
 @extend_schema_view(
     post=extend_schema(
-        tags=['task'],
+        tags=['Task'],
         summary='Register Initialization of Task from Node',
         description=task_init,
     ),
@@ -149,7 +115,7 @@ with open('./task_services/views/docs/task/task_completed.md') as f:
 
 @extend_schema_view(
     put=extend_schema(
-        tags=['task'],
+        tags=['Task'],
         summary='Register Completion of Task from Node',
         description=task_completed,
     ),
@@ -199,7 +165,7 @@ with open('./task_services/views/docs/task/task_retry.md') as f:
 
 @extend_schema_view(
     delete=extend_schema(
-        tags=['task'],
+        tags=['Task'],
         summary='Retry Task',
         description=task_retry,
         request=None,
@@ -267,7 +233,7 @@ with open('./task_services/views/docs/task/task_delete.md') as f:
 
 @extend_schema_view(
     delete=extend_schema(
-        tags=['task'],
+        tags=['Task'],
         summary='Delete Task',
         description=task_delete,
         request=None,
