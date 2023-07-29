@@ -4,20 +4,20 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-djangorestframework = "==3.13.1"
-django = "==4.0.4"
+djangorestframework = "*"
+django = "*"
 django-cors-headers = "*"
 django-environ = "*"
 psycopg2-binary = "*"
 gunicorn = "*"
-google-cloud-tasks = "==2.7.1"
-google-cloud-secret-manager = "==2.7.1"
+google-cloud-tasks = "*"
+google-cloud-secret-manager = "*"
 pillow = "*"
-querybuilder = {editable = true, git = "ssh://git@repo-4.github.com/advance-tools/django-querybuilder.git"}
+querybuilder = {editable = true, git = "https://git@github.com/advance-tools/django-querybuilder.git"}
 drf-spectacular = "*"
 
 [dev-packages]
 semver = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"

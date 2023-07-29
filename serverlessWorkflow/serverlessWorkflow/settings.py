@@ -153,7 +153,7 @@ REST_FRAMEWORK = {
 #################################################################################
 read_me = ""
 
-with open("serverlessWorkflow/README.md", encoding='utf-8') as f:
+with open("../README.md", encoding='utf-8') as f:
     read_me = f.read()
 
 version = ""
