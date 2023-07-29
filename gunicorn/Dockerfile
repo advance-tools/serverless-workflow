@@ -11,6 +11,7 @@ ENV APP_HOME /workspace
 WORKDIR $APP_HOME
 
 COPY Pipfile Pipfile.lock ./
+COPY README.md ./
 
 RUN apt-get update && apt-get install -y --no-install-recommends git && apt-get purge -y --auto-remove && rm -rf /var/lib/apt/lists/* && \
     python -m pip install --upgrade pip && \
