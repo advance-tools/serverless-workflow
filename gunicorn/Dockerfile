@@ -10,15 +10,12 @@ ENV PYTHONUNBUFFERED 1
 ENV APP_HOME /workspace
 WORKDIR $APP_HOME
 
-# Create and switch to a new user
-# RUN useradd advancedware
-# USER advancedware
+COPY Pipfile Pipfile.lock ./
 
-COPY ./django-querybuilder /django-querybuilder
-COPY ./requirements.txt .
-
-RUN python -m pip install --upgrade pip && \
-    python -m pip install -r requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends git && apt-get purge -y --auto-remove && rm -rf /var/lib/apt/lists/* && \
+    python -m pip install --upgrade pip && \
+    python -m pip install pipenv && \
+    PIPENV_VENV_IN_PROJECT=1 pipenv install --ignore-pipfile
 
 # Copy local code to the container image.
 COPY ./serverlessWorkflow ./serverlessWorkflow/

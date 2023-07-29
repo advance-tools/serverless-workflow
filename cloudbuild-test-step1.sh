@@ -11,21 +11,15 @@ echo "${_GOOGLE_CREDENTIALS}" > /workspace/credentials.json && \
 echo "DATABASE_URL=postgres://postgres:advancedware@localhost:5432/testdb
 SECRET_KEY=${_BUILD_ID}
 DEBUG=on
-CURRENT_HOST=https://8006.b4a38cb432e26a5e97be783ab28b237e.codespace.advancedware.in/
-EMAIL_HOST_USER=noreply@advancedware.in
-EMAIL_HOST_PASSWORD=bot@advancedware" > .env && \
-
-cd / && \
-git clone https://github.com/advance-tools/django-querybuilder.git && \
+CURRENT_HOST=http://localhost:8006
+EMAIL_HOST_USER=${_EMAIL_HOST_USER}
+EMAIL_HOST_PASSWORD=${_EMAIL_HOST_PASSWORD}" > .env && \
 
 cd /workspace && \
+export PIPENV_VENV_IN_PROJECT=1 && \
 pipenv uninstall querybuilder && \
 pipenv install --ignore-pipfile --dev && \
-
-pipenv install -e /django-querybuilder && \
-
-mkdir /workspace/django-querybuilder && \
-cp -r /django-querybuilder/* /workspace/django-querybuilder/ && \
+pipenv install -e git+https://${_GIT_AUTH_TOKEN}@github.com/advance-tools/django-querybuilder.git#egg=querybuilder && \
 
 cd /workspace/serverlessWorkflow && \
 pipenv run python manage.py check && \

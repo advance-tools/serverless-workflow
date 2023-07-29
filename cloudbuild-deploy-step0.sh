@@ -6,14 +6,8 @@ echo "${_GOOGLE_CREDENTIALS}" > /workspace/credentials.json && \
 python3 -m pip install --upgrade pip && \
 python3 -m pip install pipenv && \
 
-cd / && \
-git clone https://github.com/advance-tools/django-querybuilder.git && \
 cd /workspace && \
+export PIPENV_VENV_IN_PROJECT=1 && \
 pipenv uninstall querybuilder && \
-pipenv install --ignore-pipfile --deploy && \
-pipenv install -e /django-querybuilder && \
-mkdir /workspace/django-querybuilder && \
-cp -r /django-querybuilder/* /workspace/django-querybuilder/ && \
-
-cd /workspace/serverlessWorkflow && \
-pipenv requirements > /workspace/requirements.txt
+pipenv install --ignore-pipfile --dev && \
+pipenv install -e git+https://${_GIT_AUTH_TOKEN}@github.com/advance-tools/django-querybuilder.git#egg=querybuilder
