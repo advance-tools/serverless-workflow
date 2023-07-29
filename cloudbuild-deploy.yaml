@@ -4,7 +4,7 @@
     # Build Deps
     ######################
     -
-      name: python:3.8.0
+      name: python:3.9.0
       entrypoint: bash
       args:
         - '-c'
@@ -59,16 +59,16 @@
           -e SECRET_NAME=${_SECRET_NAME} \
           -- /bin/bash -c \
           '(\
-            echo $(python manage.py showmigrations --list task_services | grep "\[X\]" | tail -1 | cut -d " " -f 3) > /workspace/last_migration.txt && \
-            python manage.py showmigrations && \
-            python manage.py migrate && \
-            python manage.py collectstatic --no-input && \
+            echo $(pipenv run python manage.py showmigrations --list task_services | grep "\[X\]" | tail -1 | cut -d " " -f 3) > /workspace/last_migration.txt && \
+            pipenv run python manage.py showmigrations && \
+            pipenv run python manage.py migrate && \
+            pipenv run python manage.py collectstatic --no-input && \
             echo "migration=PASS" > /workspace/migration.txt \
           ) \
           || \
           ( \
             echo "REVERSING MIGRATION" && \
-            python manage.py migrate task_services $(cat /workspace/last_migration.txt) && \
+            pipenv run python manage.py migrate task_services $(cat /workspace/last_migration.txt) && \
             echo "migration=FAIL" > /workspace/migration.txt && \
             exit 0 \
           )'

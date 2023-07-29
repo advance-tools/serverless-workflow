@@ -1,1 +1,0 @@
-This endpoint will return all the Choices need in Task.

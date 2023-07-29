@@ -153,7 +153,7 @@ REST_FRAMEWORK = {
 #################################################################################
 read_me = ""
 
-with open("serverlessWorkflow/README.md", encoding='utf-8') as f:
+with open("../README.md", encoding='utf-8') as f:
     read_me = f.read()
 
 version = ""
@@ -167,10 +167,10 @@ SPECTACULAR_SETTINGS = {
     'VERSION': version,
     'SERVE_INCLUDE_SCHEMA': False,
     'TAGS' : [
-       {"name": "choices"},
-       {"name": "profile"},
-       {"name": "user"},
-       {"name": "task"},
+        {"name": "User"},
+        {"name": "Profile"},
+        {"name": "Choices"},
+        {"name": "Task"},
     ],
     # OTHER SETTINGS
 }
