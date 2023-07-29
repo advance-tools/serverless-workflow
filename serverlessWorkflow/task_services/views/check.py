@@ -22,7 +22,7 @@ with open('./task_services/views/docs/task/task_check.md') as f:
 
 @extend_schema_view(
     put=extend_schema(
-        tags=['task'],
+        tags=['Task'],
         summary='Trigger Status Check on a Task',
         description=task_check,
         request=None,

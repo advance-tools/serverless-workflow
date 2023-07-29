@@ -4,7 +4,7 @@
     # Build Deps
     ######################
     -
-      name: python:3.8.0
+      name: python:3.9.0
       entrypoint: bash
       args:
         - '-c'
